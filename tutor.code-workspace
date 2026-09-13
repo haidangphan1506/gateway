@@ -1,0 +1,10 @@
+{
+  "folders": [
+    {
+      "path": "../../linux_tutorial",
+    },
+  ],
+  "settings": {
+    "claudeCodeChat.permissions.yoloMode": false,
+  },
+}

@@ -1,0 +1,82 @@
+image: node:22
+
+# Chỉ chạy branch pipeline; tắt hẳn merge request pipeline để mỗi commit chỉ sinh
+# một pipeline (tránh 2 pipeline chạy đồng thời khi push/merge vào develop).
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+stages:
+  - install
+  - typecheck
+  - lint
+  - test
+  - build
+  - deploy
+
+# On the `develop` branch we only run the deploy job — all validation stages are skipped.
+.rules_not_develop: &rules_not_develop
+  - if: '$CI_COMMIT_BRANCH == "develop"'
+    when: never
+  - when: on_success
+
+install:
+  stage: install
+  script:
+    - npm install
+  artifacts:
+    paths:
+      - node_modules/
+  rules: *rules_not_develop
+
+typecheck:
+  stage: typecheck
+  dependencies:
+    - install
+  script:
+    - npm run typecheck
+  rules: *rules_not_develop
+
+lint:
+  stage: lint
+  image: node:22
+  dependencies:
+    - install
+  script:
+    - npm run lint
+  rules: *rules_not_develop
+
+test:
+  stage: test
+  dependencies:
+    - install
+  script:
+    - npm run test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: never
+    - exists:
+        - '**/*.spec.ts'
+        - '**/*.test.ts'
+        - '**/*.spec.js'
+        - '**/*.test.js'
+build:
+  stage: build
+  dependencies:
+    - install
+  script:
+    - npm run build
+  rules: *rules_not_develop
+
+deploy:
+  stage: deploy
+  resource_group: production
+  before_script:
+    - npm install -g @railway/cli
+
+  script:
+    - railway up --service=$RAILWAY_SERVICE
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
