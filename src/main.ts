@@ -7,7 +7,7 @@ import { ErrorInterceptor, LoggerInterceptor } from '@packages/interceptor';
 import { HttpExceptionFilter } from '@packages/filters';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log', 'debug', 'verbose'] });
 
   app.enableCors({ origin: true, credentials: true });
   app.useGlobalInterceptors(new ResponseInterceptor(app.get(Reflector)));
@@ -60,6 +60,6 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 8888;
   await app.listen(port);
-  Logger.log(`Backends listening on port ${port}`, 'Bootstrap');
+  Logger.log(`[GATEWAY] listening on port ${port}`, 'Bootstrap');
 }
 void bootstrap();

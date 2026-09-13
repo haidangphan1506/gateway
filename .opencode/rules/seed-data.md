@@ -1,45 +1,11 @@
 # Seed Data Patterns
 
-## Seed scripts
+## Not applicable to gateway
 
-Seed scripts live in `scripts/` and run via Bun (not Drizzle):
+Gateway has no database, so there are no seed scripts. Seed scripts live in the owning services:
 
-```bash
-bun run db:seed:user          # Single user
-bun run db:seed:users-bulk    # Bulk users
-```
+- `user` service: `bun scripts/recreate-db.ts` (drop → push schema → seed accounts)
+- `tutor-service`: has its own seed scripts
+- `third-service`: has its own seed scripts
 
-## Seed script conventions
-
-- Top-level `main()` with `.catch()` for error handling
-- Duplicate the `resolveDatabaseUrl()` logic (same as `drizzle.config.ts`)
-- Create own `postgres` client + Drizzle instance (not using NestJS DI)
-- Clean up with `client.end({ timeout: 5 })` on success/exit
-
-## Pattern
-
-```ts
-import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as schema from '../src/database/schema';
-
-function resolveDatabaseUrl(): string {
-  // Same logic as drizzle.config.ts
-}
-
-async function main(): Promise<void> {
-  const url = resolveDatabaseUrl();
-  const client = postgres(url);
-  const db = drizzle(client, { schema });
-
-  // seed logic...
-
-  await client.end({ timeout: 5 });
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
-```
+Gateway only forwards requests over RabbitMQ RPC — it never touches the database directly.

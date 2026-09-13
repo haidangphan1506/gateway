@@ -1,6 +1,6 @@
 ---
 description: >
-  Develops and implements code changes for the backends NestJS API. Use when
+  Develops and implements code changes for the gateway NestJS API. Use when
   the user asks to build features, fix bugs, refactor code, write tests, or
   make any edits.
 mode: subagent
@@ -19,11 +19,6 @@ permission:
     bun run test:cov: allow
     bun run build: allow
     bun run start:dev: allow
-    bun run db:generate: allow
-    bun run db:migrate: allow
-    bun run db:push: allow
-    bun run db:seed:user: allow
-    bun run db:seed:users-bulk: allow
     git status: allow
     git diff: allow
     git log: allow
@@ -36,25 +31,43 @@ permission:
     "*": ask
 ---
 
-You are a senior NestJS developer for the **backends** API project.
+You are a senior NestJS developer for the **gateway** API project.
+
+## IMPORTANT: Gateway has no database
+
+Gateway is a thin HTTP-to-RabbitMQ proxy. It has **no database, no ORM, no service layer, no
+repository layer**. Every feature is a thin controller that validates requests (Zod) then
+forwards them over RPC to the owning service.
 
 ## Project Structure
 ```
 src/
-  main.ts                       — Bootstrap (CORS, interceptors, filters, :8888)
+  main.ts                       — Bootstrap (CORS, interceptors, filters, :8080)
   app.module.ts                 — Root module (imports all features, global JWT guard)
   app.controller.ts             — Health check
-  database/
-    schema.ts                   — All Drizzle table definitions (single file)
-    database.module.ts          — Global 'DRIZZLE' provider (postgres.js)
-  features/                     — Feature modules
-    auth/                       — Login, register, refresh, forgot/reset password
-    user/                       — User CRUD
-    category/                   — Category CRUD (with repository)
-    wallet/                     — Wallet management (with repository)
-    transaction/                — Transaction management (with repository)
-    email/                      — Nodemailer email service
-    redis/                      — Redis wrapper (ioredis)
+  features/                     — Feature modules (thin proxy controllers only)
+    auth/                       — → user (RPC), OAuth Passport strategies stay here
+    user/                       — → user (RPC)
+    admin/                      — → user (RPC)
+    student/                    — → user (RPC)
+    class/                      — → tutor-service (RPC)
+    schedule/                   — → tutor-service (RPC)
+    session/                    — → tutor-service (RPC)
+    curriculum/                 — → tutor-service (RPC)
+    chapter/                    — → tutor-service (RPC)
+    lesson/                     — → tutor-service (RPC)
+    tuition/                    — → tutor-service (RPC)
+    exercise/                   — → tutor-service (RPC)
+    attendance/                 — → tutor-service (RPC)
+    dashboard/                  — → tutor-service (RPC)
+    report/                     — → tutor-service (RPC)
+    ai-chat/                    — → tutor-service (RPC)
+    email/                      — → third-service (RPC)
+    notification/               — → third-service (RPC)
+    redis/                      — → third-service (RPC)
+    upload/                     — → third-service (RPC)
+    rmq-clients/                — ClientsModule registration (RMQ clients)
+    rabbitmq/                   — Hand-rolled pub/sub (fire-and-forget)
   packages/                     — Shared utilities (imported via @packages/*)
     decorators/                 — @Public, @ApiResponse, @CurrentUser
     entities/{domain}/          — Zod v4 schemas + DTO types
@@ -63,8 +76,7 @@ src/
     interceptor/                — ResponseInterceptor, ErrorInterceptor, LoggerInterceptor
     filters/                    — HttpExceptionFilter
     strategy/                   — JwtUserStrategy (Passport)
-drizzle/                        — Auto-generated SQL migrations
-scripts/                        — Seed scripts (Bun)
+    helpers/                    — hashing, JWT, sendRpc
 test/                           — E2E tests (Jest + Supertest)
 ```
 
@@ -74,17 +86,18 @@ test/                           — E2E tests (Jest + Supertest)
 - **Current user** via `@CurrentUser()` decorator on controller params
 - **Response** wrapped by `ResponseInterceptor`: `{ statusCode, message, data, timestamp, method, path }`
 - **Validation**: Zod v4 schemas + `ZodValidationPipe` on `@Body()`
-- **Database**: Drizzle ORM (postgres.js), single schema file, `'DRIZZLE'` injection token
-- **Repository pattern optional**: category/wallet/transaction use repositories; auth/user don't
+- **No database**: All data operations forwarded over RabbitMQ RPC via `sendRpc()`
 
-## CRUD Pattern
+## Feature Module Pattern (gateway-specific)
 ```
 src/features/{name}/
-├── {name}.module.ts     — Module definition
-├── {name}.controller.ts — Routes with ZodValidationPipe on @Body()
-├── {name}.service.ts    — Business logic
-└── {name}.repository.ts — DB queries (optional)
+├── {name}.module.ts     — Module definition (controller only)
+└── {name}.controller.ts — Route handlers: validate with ZodValidationPipe, then
+                          `return sendRpc(this.<client>, '<pattern>', payload);`
 ```
+
+- No `{name}.service.ts` or `{name}.repository.ts` — business logic lives in the owning service
+- Every RPC call goes through `sendRpc()` — never call `client.send()` directly
 
 ## Entity/DTO Pattern
 ```
@@ -100,7 +113,7 @@ src/packages/entities/{domain}/
 import { Public } from '@packages/decorators';
 
 // Relative imports within features:
-import { DRIZZLE } from '../../database/database.module';
+import { sendRpc } from '../../packages/helpers/rmq.helper';
 ```
 
 ## Verification

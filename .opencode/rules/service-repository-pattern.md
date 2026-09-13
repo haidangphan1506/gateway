@@ -1,69 +1,28 @@
 # Service / Repository Pattern
 
-## When to use a repository
+## Gateway has no service or repository layer
 
-Use a dedicated repository class when DB queries involve:
-- Complex filtering / search / pagination logic
-- JOINs across multiple tables
-- Reusable query patterns (e.g., `getByField`)
-- The same query is called from multiple service methods
+Gateway is a thin HTTP edge with no service or repository layer and no database for any feature.
+Every request is validated (Zod, guards) then forwarded over **RabbitMQ RPC** to the owning service.
 
-```ts
-// features/category/category.repository.ts
-@Injectable()
-export class CategoryRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: ReturnType<typeof drizzle>) {}
-
-  async getCategory({ field, value }: { field: string; value: string }) {
-    return this.db.select().from(categories)
-      .where(eq(categories[field as keyof typeof categories] as any, value));
-  }
-}
-```
-
-Features WITH repository: `category`, `wallet`, `transaction`
-Features WITHOUT repository: `auth`, `user` (simple CRUD, queries kept in service)
-
-## Direct DB in service
-
-For simple features, inject `'DRIZZLE'` directly in the service:
-
-```ts
-@Injectable()
-export class UserService {
-  constructor(@Inject(DRIZZLE) private readonly db: ReturnType<typeof drizzle>) {}
-}
-```
-
-## Dependency flow
+## Request flow
 
 ```
-Controller → Service → (optional Repository) → Drizzle ORM → PostgreSQL
+Controller → sendRpc() → RabbitMQ → owning service's *.rpc.controller.ts → its service → its DB
 ```
 
 - Controller handles HTTP (routes, validation, decorators)
-- Service handles business logic, orchestration, and cross-resource validation
-- Repository handles raw DB queries
+- `sendRpc()` forwards the request to the owning service over RabbitMQ
+- The owning service (`user`, `tutor-service`, or `third-service`) handles business logic and DB access
 
-## Service assertion pattern
+## Do NOT add service/repository layers here
 
-Services validate cross-resource constraints before DB operations:
+If you're about to add a `*.service.ts` or `*.repository.ts` in gateway, stop. The logic belongs in
+the owning service's repo behind a new `@MessagePattern`, and gateway only needs a new `sendRpc(...)` call site.
 
-```ts
-private async assertUserExists(userId: string) {
-  if (!userId || !UUID_V4_REGEX.test(userId)) {
-    throw new NotFoundException(ERROR_MESSAGES.USER_ID_NOT_FOUND);
-  }
-  const userData = await this.userService.getUserByField({ field: 'id', value: userId });
-  if (!userData || (Array.isArray(userData) && userData.length === 0)) {
-    throw new NotFoundException(ERROR_MESSAGES.USER_NOT_FOUND);
-  }
-}
+## Message pattern naming
 
-private async assertWalletOwnedByUser(userId: string, walletId: string) {
-  const wallet = await this.walletService.getWalletByFieldService({ userId, field: 'id', value: walletId });
-  if (!wallet || (Array.isArray(wallet) && wallet.length === 0)) {
-    throw new NotFoundException(ERROR_MESSAGES.WALLET_NOT_EXISTS);
-  }
-}
-```
+Gateway's pattern strings must match the owning service's `@MessagePattern(...)` strings exactly.
+They are the contract between the two repos and nothing enforces them at compile time across repos.
+
+Example: `auth.login`, `user.updateUserByAdmin`, `admin.createTutor`, `student.findById`

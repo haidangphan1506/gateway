@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // PreToolUse hook (Write|Edit): deny edits to protected files.
 //   - .env / .env.* — hold secrets, must be edited by a human.
-//   - drizzle/**    — generated migrations; edit src/database/schema.ts + `bun run db:generate`.
 // Emits a PreToolUse permission "deny" as JSON; otherwise stays silent and allows the edit.
 let input = '';
 process.stdin.on('data', (c) => (input += c));
@@ -20,10 +19,6 @@ process.stdin.on('end', () => {
     {
       re: /(^|\/)\.env(\.[^/]+)?$/,
       why: '.env files hold secrets — edit them manually, never through Claude.',
-    },
-    {
-      re: /(^|\/)drizzle\//,
-      why: 'drizzle/ migrations are generated. Edit src/database/schema.ts, then run `bun run db:generate`.',
     },
   ];
 
