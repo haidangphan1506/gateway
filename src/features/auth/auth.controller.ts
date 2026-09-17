@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ClientProxy } from '@nestjs/microservices';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
@@ -30,10 +30,10 @@ import {
   ResetPasswordResponseDto,
 } from '@packages/entities/auth';
 import { ApiResponse, Public } from '@packages/decorators';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import { ZodValidationPipe } from '@packages/pipes';
 import type { FacebookProfile, GoogleProfile } from '@packages/strategy';
-import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 type RequestWithGoogleProfile = Request & { user: GoogleProfile };
 type RequestWithFacebookProfile = Request & { user: FacebookProfile };
@@ -47,7 +47,7 @@ type RequestWithFacebookProfile = Request & { user: FacebookProfile };
 @Controller('auth')
 export class AuthController {
   constructor(
-    @Inject(USER_SERVICE) private readonly userClient: ClientProxy,
+    // @Inject(USER_SERVICE) private readonly userClient: ClientProxy, // commented out: RabbitMQ client removed
     private readonly configService: ConfigService,
   ) {}
 
@@ -74,11 +74,12 @@ export class AuthController {
   })
   @SwaggerResponse({ status: 200, description: 'Registration successful' })
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Login successful' })
-  async register(
+  register(
     @Body(new ZodValidationPipe<RegisterDto>(registerSchema))
-    registerDto: RegisterDto,
+    _registerDto: RegisterDto,
   ): Promise<RegisterResponseDto> {
-    return sendRpc(this.userClient, 'auth.register', registerDto);
+    // return sendRpc(this.userClient, 'auth.register', registerDto); // commented out: RabbitMQ request disabled
+    throw new Error('auth.register is disabled — RabbitMQ request commented out');
   }
 
   @Public()
@@ -120,11 +121,12 @@ export class AuthController {
   })
   @SwaggerResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Login successful' })
-  async login(
+  login(
     @Body(new ZodValidationPipe<LoginDto>(loginSchema))
-    loginDto: LoginDto,
+    _loginDto: LoginDto,
   ): Promise<LoginResponseDto> {
-    return sendRpc(this.userClient, 'auth.login', loginDto);
+    // return sendRpc(this.userClient, 'auth.login', loginDto); // commented out: RabbitMQ request disabled
+    throw new Error('auth.login is disabled — RabbitMQ request commented out');
   }
 
   @Public()
@@ -167,11 +169,12 @@ export class AuthController {
   })
   @SwaggerResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Login successful' })
-  async loginByUserCode(
+  loginByUserCode(
     @Body(new ZodValidationPipe<LoginByUserCodeDto>(loginByUserCodeSchema))
-    dto: LoginByUserCodeDto,
+    _dto: LoginByUserCodeDto,
   ): Promise<LoginResponseDto> {
-    return sendRpc(this.userClient, 'auth.loginByUserCode', dto);
+    // return sendRpc(this.userClient, 'auth.loginByUserCode', dto); // commented out: RabbitMQ request disabled
+    throw new Error('auth.loginByUserCode is disabled — RabbitMQ request commented out');
   }
 
   @Public()
@@ -195,9 +198,10 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Token refreshed' })
   refresh(
     @Body(new ZodValidationPipe<RefreshTokenBodyDto>(refreshTokenBodySchema))
-    body: RefreshTokenBodyDto,
+    _body: RefreshTokenBodyDto,
   ): Promise<LoginResponseDto> {
-    return sendRpc(this.userClient, 'auth.refresh', body);
+    // return sendRpc(this.userClient, 'auth.refresh', body); // commented out: RabbitMQ request disabled
+    throw new Error('auth.refresh is disabled — RabbitMQ request commented out');
   }
 
   @Public()
@@ -217,9 +221,10 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Forgot password successful' })
   forgotPassword(
     @Body(new ZodValidationPipe<ForgotPasswordDto>(forgotPasswordSchema))
-    forgotPasswordDto: ForgotPasswordDto,
+    _forgotPasswordDto: ForgotPasswordDto,
   ): Promise<ForgotPasswordResponseDto> {
-    return sendRpc(this.userClient, 'auth.forgotPassword', forgotPasswordDto);
+    // return sendRpc(this.userClient, 'auth.forgotPassword', forgotPasswordDto); // commented out: RabbitMQ request disabled
+    throw new Error('auth.forgotPassword is disabled — RabbitMQ request commented out');
   }
 
   @ApiBearerAuth('access-token')
@@ -255,9 +260,10 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Reset password successful' })
   resetPassword(
     @Body(new ZodValidationPipe<ResetPasswordDto>(resetPasswordSchema))
-    resetPasswordDto: ResetPasswordDto,
+    _resetPasswordDto: ResetPasswordDto,
   ): Promise<ResetPasswordResponseDto> {
-    return sendRpc(this.userClient, 'auth.resetPassword', resetPasswordDto);
+    // return sendRpc(this.userClient, 'auth.resetPassword', resetPasswordDto); // commented out: RabbitMQ request disabled
+    throw new Error('auth.resetPassword is disabled — RabbitMQ request commented out');
   }
 
   @Public()
@@ -283,24 +289,25 @@ export class AuthController {
     status: 302,
     description: 'Redirects to frontend with tokens in query params',
   })
-  async googleAuthCallback(
-    @Req() req: RequestWithGoogleProfile,
-    @Res() res: Response,
+  googleAuthCallback(
+    @Req() _req: RequestWithGoogleProfile,
+    @Res() _res: Response,
   ): Promise<void> {
-    const { accessToken, refreshToken } = await sendRpc<LoginResponseDto>(
-      this.userClient,
-      'auth.googleLogin',
-      req.user,
-    );
-
-    const redirectBase =
-      this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
-      'http://localhost:3000/oauth/callback';
-    const redirectUrl = new URL(redirectBase);
-    redirectUrl.searchParams.set('accessToken', accessToken);
-    redirectUrl.searchParams.set('refreshToken', refreshToken);
-
-    res.redirect(redirectUrl.toString());
+    // const { accessToken, refreshToken } = await sendRpc<LoginResponseDto>( // commented out: RabbitMQ request disabled
+    //   this.userClient,
+    //   'auth.googleLogin',
+    //   req.user,
+    // );
+    //
+    // const redirectBase =
+    //   this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
+    //   'http://localhost:3000/oauth/callback';
+    // const redirectUrl = new URL(redirectBase);
+    // redirectUrl.searchParams.set('accessToken', accessToken);
+    // redirectUrl.searchParams.set('refreshToken', refreshToken);
+    //
+    // res.redirect(redirectUrl.toString());
+    throw new Error('auth.googleLogin is disabled — RabbitMQ request commented out');
   }
 
   // GET /auth/facebook
@@ -328,23 +335,24 @@ export class AuthController {
     status: 302,
     description: 'Redirects to frontend with tokens in query params',
   })
-  async facebookAuthCallback(
-    @Req() req: RequestWithFacebookProfile,
-    @Res() res: Response,
+  facebookAuthCallback(
+    @Req() _req: RequestWithFacebookProfile,
+    @Res() _res: Response,
   ): Promise<void> {
-    const { accessToken, refreshToken } = await sendRpc<LoginResponseDto>(
-      this.userClient,
-      'auth.facebookLogin',
-      req.user,
-    );
-
-    const redirectBase =
-      this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
-      'http://localhost:3000/oauth/callback';
-    const redirectUrl = new URL(redirectBase);
-    redirectUrl.searchParams.set('accessToken', accessToken);
-    redirectUrl.searchParams.set('refreshToken', refreshToken);
-
-    res.redirect(redirectUrl.toString());
+    // const { accessToken, refreshToken } = await sendRpc<LoginResponseDto>( // commented out: RabbitMQ request disabled
+    //   this.userClient,
+    //   'auth.facebookLogin',
+    //   req.user,
+    // );
+    //
+    // const redirectBase =
+    //   this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
+    //   'http://localhost:3000/oauth/callback';
+    // const redirectUrl = new URL(redirectBase);
+    // redirectUrl.searchParams.set('accessToken', accessToken);
+    // redirectUrl.searchParams.set('refreshToken', refreshToken);
+    //
+    // res.redirect(redirectUrl.toString());
+    throw new Error('auth.facebookLogin is disabled — RabbitMQ request commented out');
   }
 }

@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -18,9 +18,9 @@ import {
   type CreateNotificationDto,
   type GetNotificationsQueryDto,
 } from '@packages/entities/notification';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { THIRD_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { THIRD_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `notifications`: validation/guards/Swagger stay, every handler
@@ -30,7 +30,8 @@ import { THIRD_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('notifications')
 export class NotificationController {
-  constructor(@Inject(THIRD_SERVICE) private readonly thirdClient: ClientProxy) {}
+  // constructor(@Inject(THIRD_SERVICE) private readonly thirdClient: ClientProxy) {}
+  constructor() {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -53,10 +54,11 @@ export class NotificationController {
   @SwaggerResponse({ status: 201, description: 'Notification created' })
   create(
     @Body(new ZodValidationPipe<CreateNotificationDto>(createNotificationSchema))
-    dto: CreateNotificationDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: CreateNotificationDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.thirdClient, 'notification.create', { ...dto, senderId: user.id });
+    // return sendRpc(this.thirdClient, 'notification.create', { ...dto, senderId: user.id }); // commented out: RabbitMQ request disabled
+    throw new Error('notification.create is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -70,18 +72,20 @@ export class NotificationController {
   @SwaggerResponse({ status: 200, description: 'Notifications fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetNotificationsQueryDto>(getNotificationsQuerySchema))
-    query: GetNotificationsQueryDto,
-    @CurrentUser() user: JwtGuardUser,
+    _query: GetNotificationsQueryDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.thirdClient, 'notification.getAll', { userId: user.id, query });
+    // return sendRpc(this.thirdClient, 'notification.getAll', { userId: user.id, query }); // commented out: RabbitMQ request disabled
+    throw new Error('notification.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Patch('read-all')
   @HttpCode(StatusCodes.OK)
   @ApiOperation({ summary: 'Mark all as read', description: 'Mark all notifications as read for the current user' })
   @SwaggerResponse({ status: 200, description: 'All marked as read' })
-  markAllAsRead(@CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.thirdClient, 'notification.markAllAsRead', { userId: user.id });
+  markAllAsRead(@CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.thirdClient, 'notification.markAllAsRead', { userId: user.id }); // commented out: RabbitMQ request disabled
+    throw new Error('notification.markAllAsRead is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -89,8 +93,9 @@ export class NotificationController {
   @ApiOperation({ summary: 'Get notification detail' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Notification detail' })
-  getById(@Param('id') id: string) {
-    return sendRpc(this.thirdClient, 'notification.getById', { id });
+  getById(@Param('id') _id: string) {
+    // return sendRpc(this.thirdClient, 'notification.getById', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('notification.getById is disabled — RabbitMQ request commented out');
   }
 
   @Patch(':id/read')
@@ -98,8 +103,9 @@ export class NotificationController {
   @ApiOperation({ summary: 'Mark notification as read' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Marked as read' })
-  markAsRead(@Param('id') id: string) {
-    return sendRpc(this.thirdClient, 'notification.markAsRead', { id });
+  markAsRead(@Param('id') _id: string) {
+    // return sendRpc(this.thirdClient, 'notification.markAsRead', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('notification.markAsRead is disabled — RabbitMQ request commented out');
   }
 
   @Delete(':id')
@@ -107,7 +113,8 @@ export class NotificationController {
   @ApiOperation({ summary: 'Delete notification' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Notification deleted' })
-  delete(@Param('id') id: string) {
-    return sendRpc(this.thirdClient, 'notification.delete', { id });
+  delete(@Param('id') _id: string) {
+    // return sendRpc(this.thirdClient, 'notification.delete', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('notification.delete is disabled — RabbitMQ request commented out');
   }
 }

@@ -1,5 +1,5 @@
-import { Controller, Get, HttpCode, Inject, Query, UseGuards } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Controller, Get, HttpCode, Query, UseGuards } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -15,8 +15,8 @@ import {
   getLearningClassReportsQuerySchema,
   type GetLearningClassReportsQueryDto,
 } from '@packages/entities/report';
-import { sendRpc } from '@packages/helpers';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `reports/learning` (admin only): guards/Swagger stay, every
@@ -28,7 +28,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @Roles('ADMIN')
 @Controller('reports/learning')
 export class ReportController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Get('summary')
   @HttpCode(StatusCodes.OK)
@@ -38,7 +39,8 @@ export class ReportController {
   })
   @SwaggerResponse({ status: 200, description: 'Summary fetched' })
   getSummary() {
-    return sendRpc(this.tutorClient, 'report.summary');
+    // return sendRpc(this.tutorClient, 'report.summary'); // commented out: RabbitMQ request disabled
+    throw new Error('report.summary is disabled — RabbitMQ request commented out');
   }
 
   @Get('attendance-trend')
@@ -49,7 +51,8 @@ export class ReportController {
   })
   @SwaggerResponse({ status: 200, description: 'Attendance trend fetched' })
   getAttendanceTrend() {
-    return sendRpc(this.tutorClient, 'report.attendanceTrend');
+    // return sendRpc(this.tutorClient, 'report.attendanceTrend'); // commented out: RabbitMQ request disabled
+    throw new Error('report.attendanceTrend is disabled — RabbitMQ request commented out');
   }
 
   @Get('classes')
@@ -66,8 +69,9 @@ export class ReportController {
     @Query(
       new ZodValidationPipe<GetLearningClassReportsQueryDto>(getLearningClassReportsQuerySchema),
     )
-    query: GetLearningClassReportsQueryDto,
+    _query: GetLearningClassReportsQueryDto,
   ) {
-    return sendRpc(this.tutorClient, 'report.classList', { query });
+    // return sendRpc(this.tutorClient, 'report.classList', { query }); // commented out: RabbitMQ request disabled
+    throw new Error('report.classList is disabled — RabbitMQ request commented out');
   }
 }

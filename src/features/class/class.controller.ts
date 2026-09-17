@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -22,9 +22,9 @@ import {
   type UpdateClassDto,
   updateClassSchema,
 } from '@packages/entities/class';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for the education `class` domain: validation/guards/Swagger stay,
@@ -35,7 +35,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('classes')
 export class ClassController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -44,10 +45,11 @@ export class ClassController {
   @SwaggerResponse({ status: 201, description: 'Class created' })
   create(
     @Body(new ZodValidationPipe<CreateClassDto>(createClassSchema))
-    dto: CreateClassDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: CreateClassDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'class.create', { data: dto, userId: user.id });
+    // return sendRpc(this.tutorClient, 'class.create', { data: dto, userId: user.id }); // commented out: RabbitMQ request disabled
+    throw new Error('class.create is disabled — RabbitMQ request commented out');
   }
 
   @Put(':id')
@@ -59,12 +61,13 @@ export class ClassController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Class updated' })
   update(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<UpdateClassDto>(updateClassSchema))
-    dto: UpdateClassDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: UpdateClassDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'class.update', { userId: user.id, id, data: dto });
+    // return sendRpc(this.tutorClient, 'class.update', { userId: user.id, id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('class.update is disabled — RabbitMQ request commented out');
   }
 
   @Get('generate-code')
@@ -72,7 +75,8 @@ export class ClassController {
   @ApiOperation({ summary: 'Generate class code', description: 'Generate a unique, unused class code' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Class code generated' })
   generateCode() {
-    return sendRpc(this.tutorClient, 'class.generateCode');
+    // return sendRpc(this.tutorClient, 'class.generateCode'); // commented out: RabbitMQ request disabled
+    throw new Error('class.generateCode is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -87,10 +91,11 @@ export class ClassController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Class list fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetClassesQueryDto>(getClassesQuerySchema))
-    query: GetClassesQueryDto,
-    @CurrentUser() user: JwtGuardUser,
+    _query: GetClassesQueryDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'class.getAll', { userId: user?.id, query });
+    // return sendRpc(this.tutorClient, 'class.getAll', { userId: user?.id, query }); // commented out: RabbitMQ request disabled
+    throw new Error('class.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -98,8 +103,9 @@ export class ClassController {
   @ApiOperation({ summary: 'Get class detail' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Class detail fetched' })
-  getById(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'class.getById', { userId: user?.id, id });
+  getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'class.getById', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('class.getById is disabled — RabbitMQ request commented out');
   }
 
   @Post(':id/students')
@@ -108,16 +114,17 @@ export class ClassController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Students added' })
   addStudents(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<AddStudentsDto>(addStudentsSchema))
-    dto: AddStudentsDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: AddStudentsDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'class.addStudents', {
-      userId: user?.id,
-      classId: id,
-      data: dto,
-    });
+    // return sendRpc(this.tutorClient, 'class.addStudents', { // commented out: RabbitMQ request disabled
+    //   userId: user?.id,
+    //   classId: id,
+    //   data: dto,
+    // });
+    throw new Error('class.addStudents is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id/students')
@@ -125,8 +132,9 @@ export class ClassController {
   @ApiOperation({ summary: 'Get students in class' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Students fetched' })
-  getStudents(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'class.getStudents', { userId: user?.id, id });
+  getStudents(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'class.getStudents', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('class.getStudents is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id/materials')
@@ -134,8 +142,9 @@ export class ClassController {
   @ApiOperation({ summary: 'Get class materials', description: 'List theory & exercise files of a class' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Class materials retrieved' })
-  getMaterials(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'class.getMaterials', { userId: user?.id, id });
+  getMaterials(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'class.getMaterials', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('class.getMaterials is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id/watches')
@@ -146,8 +155,9 @@ export class ClassController {
   })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Class watch overview retrieved' })
-  getWatch(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'class.getWatch', { userId: user?.id, id });
+  getWatch(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'class.getWatch', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('class.getWatch is disabled — RabbitMQ request commented out');
   }
 
   @Delete(':id')
@@ -155,7 +165,8 @@ export class ClassController {
   @ApiOperation({ summary: 'Delete class' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Class deleted' })
-  del(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'class.delete', { userId: user?.id, id });
+  del(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'class.delete', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('class.delete is disabled — RabbitMQ request commented out');
   }
 }

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Put } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Get, HttpCode, Param, Put } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -14,9 +14,9 @@ import {
   upsertAttendanceSchema,
   type UpsertAttendanceDto,
 } from '@packages/entities/attendance';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `attendance`: validation/guards/Swagger stay, every handler
@@ -26,7 +26,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('attendances')
 export class AttendanceController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Get('session/:sessionId')
   @HttpCode(StatusCodes.OK)
@@ -36,8 +37,9 @@ export class AttendanceController {
   })
   @ApiParam({ name: 'sessionId', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Attendance fetched' })
-  getBySession(@Param('sessionId') sessionId: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'attendance.getBySession', { userId: user?.id, sessionId });
+  getBySession(@Param('sessionId') _sessionId: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'attendance.getBySession', { userId: user?.id, sessionId }); // commented out: RabbitMQ request disabled
+    throw new Error('attendance.getBySession is disabled — RabbitMQ request commented out');
   }
 
   @Put()
@@ -49,9 +51,10 @@ export class AttendanceController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Attendance marked' })
   upsert(
     @Body(new ZodValidationPipe<UpsertAttendanceDto>(upsertAttendanceSchema))
-    dto: UpsertAttendanceDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: UpsertAttendanceDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'attendance.upsert', { userId: user?.id, data: dto });
+    // return sendRpc(this.tutorClient, 'attendance.upsert', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('attendance.upsert is disabled — RabbitMQ request commented out');
   }
 }

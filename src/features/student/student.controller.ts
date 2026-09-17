@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -20,9 +20,9 @@ import {
   updateStudentSchema,
   type UpdateStudentDto,
 } from '@packages/entities/student';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge here: validation/guards/Swagger stay, every handler forwards to
@@ -32,7 +32,8 @@ import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('students')
 export class StudentController {
-  constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
+  // constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
+  constructor() {}
 
   @Get('get-student-code')
   @HttpCode(StatusCodes.OK)
@@ -41,8 +42,9 @@ export class StudentController {
     description: 'Generate student code ...',
   })
   @SwaggerResponse({ status: 201, description: 'Student created' })
-  async generateStudentCodeController() {
-    return sendRpc(this.userClient, 'student.getStudentCode', {});
+  generateStudentCodeController() {
+    // return sendRpc(this.userClient, 'student.getStudentCode', {}); // commented out: RabbitMQ request disabled
+    throw new Error('student.getStudentCode is disabled — RabbitMQ request commented out');
   }
 
   @Post()
@@ -107,10 +109,11 @@ export class StudentController {
   @SwaggerResponse({ status: 201, description: 'Student created' })
   create(
     @Body(new ZodValidationPipe(createStudentSchema))
-    dto: CreateStudentDto,
-    @CurrentUser() currentUser: JwtGuardUser,
+    _dto: CreateStudentDto,
+    @CurrentUser() _currentUser: JwtGuardUser,
   ) {
-    return sendRpc(this.userClient, 'student.create', { data: dto, currentUser });
+    // return sendRpc(this.userClient, 'student.create', { data: dto, currentUser }); // commented out: RabbitMQ request disabled
+    throw new Error('student.create is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -139,11 +142,12 @@ export class StudentController {
     description: 'Filter by active status',
   })
   @SwaggerResponse({ status: 200, description: 'Students fetched' })
-  async getAllStudents(
+  getAllStudents(
     @Query(new ZodValidationPipe<GetStudentsQueryDto>(getStudentsQuerySchema))
-    query: GetStudentsQueryDto,
+    _query: GetStudentsQueryDto,
   ) {
-    return sendRpc(this.userClient, 'student.getAll', query);
+    // return sendRpc(this.userClient, 'student.getAll', query); // commented out: RabbitMQ request disabled
+    throw new Error('student.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -211,8 +215,9 @@ export class StudentController {
     },
   })
   @SwaggerResponse({ status: 404, description: 'Student not found' })
-  async findById(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'student.findById', { id });
+  findById(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'student.findById', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('student.findById is disabled — RabbitMQ request commented out');
   }
 
   @Put(':id')
@@ -251,12 +256,13 @@ export class StudentController {
     },
   })
   @SwaggerResponse({ status: 200, description: 'Student updated' })
-  async update(
-    @Param('id') id: string,
+  update(
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe(updateStudentSchema))
-    dto: UpdateStudentDto,
+    _dto: UpdateStudentDto,
   ) {
-    return sendRpc(this.userClient, 'student.update', { id, data: dto });
+    // return sendRpc(this.userClient, 'student.update', { id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('student.update is disabled — RabbitMQ request commented out');
   }
 
   @Delete(':id')
@@ -264,7 +270,8 @@ export class StudentController {
   @ApiOperation({ summary: 'Delete student' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Student deleted' })
-  async delete(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'student.delete', { id });
+  delete(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'student.delete', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('student.delete is disabled — RabbitMQ request commented out');
   }
 }

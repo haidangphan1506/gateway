@@ -2,12 +2,12 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { ClientProxy } from '@nestjs/microservices';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import { IS_PUBLIC_KEY } from '@packages/decorators';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { Request } from 'express';
-import { Inject } from '@nestjs/common';
-import { USER_SERVICE } from '../../features/rmq-clients/rmq-clients.constants';
+// import { Inject } from '@nestjs/common'; // commented out: RabbitMQ client removed
+// import { USER_SERVICE } from '../../features/rmq-clients/rmq-clients.constants'; // commented out
 
 import type { JwtUserRole } from '@packages/helpers';
 
@@ -59,10 +59,10 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly reflector: Reflector,
-    @Inject(USER_SERVICE) private readonly userClient: ClientProxy,
+    // @Inject(USER_SERVICE) private readonly userClient: ClientProxy, // commented out: RabbitMQ client removed
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -97,14 +97,15 @@ export class JwtAuthGuard implements CanActivate {
 
     // Confirm the user still exists (revoked/deleted accounts fail even with a valid JWT) via
     // the `user` service over RabbitMQ — gateway has no database of its own to check locally.
-    const rows = await sendRpc<unknown[]>(this.userClient, 'user.getUserByField', {
-      field: 'id',
-      value: payload.id,
-    });
-
-    if (!Array.isArray(rows) || rows.length === 0) {
-      throw new UnauthorizedException('Unauthorized ...');
-    }
+    // Commented out: RabbitMQ request disabled while migrating transports.
+    // const rows = await sendRpc<unknown[]>(this.userClient, 'user.getUserByField', {
+    //   field: 'id',
+    //   value: payload.id,
+    // });
+    //
+    // if (!Array.isArray(rows) || rows.length === 0) {
+    //   throw new UnauthorizedException('Unauthorized ...');
+    // }
 
     return true;
   }

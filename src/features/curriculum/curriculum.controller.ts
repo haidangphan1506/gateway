@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -20,9 +20,9 @@ import {
   type GetCurriculumsQueryDto,
   type UpdateCurriculumDto,
 } from '@packages/entities/curriculum';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `curriculum`: validation/guards/Swagger stay, every handler
@@ -32,14 +32,16 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('curriculum')
 export class CurriculumController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Get('generate-code')
   @HttpCode(StatusCodes.CREATED)
   @ApiOperation({ summary: 'Generate curriculum code' })
   @SwaggerResponse({ status: 201, description: 'Curriculum code generated' })
   generateCode() {
-    return sendRpc(this.tutorClient, 'curriculum.generateCode');
+    // return sendRpc(this.tutorClient, 'curriculum.generateCode'); // commented out: RabbitMQ request disabled
+    throw new Error('curriculum.generateCode is disabled — RabbitMQ request commented out');
   }
 
   @Post()
@@ -62,13 +64,14 @@ export class CurriculumController {
   @SwaggerResponse({ status: 201, description: 'Curriculum created' })
   create(
     @Body(new ZodValidationPipe<CreateCurriculumDto>(createCurriculumSchema))
-    dto: CreateCurriculumDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: CreateCurriculumDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'curriculum.create', {
-      userId: user.id,
-      createCurriculum: dto,
-    });
+    // return sendRpc(this.tutorClient, 'curriculum.create', { // commented out: RabbitMQ request disabled
+    //   userId: user.id,
+    //   createCurriculum: dto,
+    // });
+    throw new Error('curriculum.create is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -80,10 +83,11 @@ export class CurriculumController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Curriculum list fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetCurriculumsQueryDto>(getCurriculumsQuerySchema))
-    query: GetCurriculumsQueryDto,
-    @CurrentUser() user: JwtGuardUser,
+    _query: GetCurriculumsQueryDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'curriculum.getAll', { userId: user.id, query });
+    // return sendRpc(this.tutorClient, 'curriculum.getAll', { userId: user.id, query }); // commented out: RabbitMQ request disabled
+    throw new Error('curriculum.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -91,8 +95,9 @@ export class CurriculumController {
   @ApiOperation({ summary: 'Get curriculum by id' })
   @ApiParam({ name: 'id', description: 'Curriculum ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Curriculum detail fetched' })
-  getById(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'curriculum.getById', { userId: user.id, id });
+  getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'curriculum.getById', { userId: user.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('curriculum.getById is disabled — RabbitMQ request commented out');
   }
 
   @Put(':id')
@@ -112,16 +117,17 @@ export class CurriculumController {
   })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Curriculum updated' })
   update(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<UpdateCurriculumDto>(updateCurriculumSchema))
-    dto: UpdateCurriculumDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: UpdateCurriculumDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'curriculum.update', {
-      userId: user?.id,
-      id,
-      data: dto,
-    });
+    // return sendRpc(this.tutorClient, 'curriculum.update', { // commented out: RabbitMQ request disabled
+    //   userId: user?.id,
+    //   id,
+    //   data: dto,
+    // });
+    throw new Error('curriculum.update is disabled — RabbitMQ request commented out');
   }
 
   @Delete(':id')
@@ -129,7 +135,8 @@ export class CurriculumController {
   @ApiOperation({ summary: 'Delete curriculum' })
   @ApiParam({ name: 'id', description: 'Curriculum ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Curriculum deleted' })
-  delete(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'curriculum.delete', { userId: user.id, id });
+  delete(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'curriculum.delete', { userId: user.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('curriculum.delete is disabled — RabbitMQ request commented out');
   }
 }
