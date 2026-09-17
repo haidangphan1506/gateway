@@ -4,13 +4,12 @@ import {
   Delete,
   Get,
   HttpCode,
-  Inject,
   Param,
   Post,
   Put,
   Query,
 } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -36,11 +35,11 @@ import {
   updateUserSchema,
   type UserDataFieldDto,
 } from '@packages/entities/user';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
 import { USER_SWAGGER_MESSAGES } from 'src/data/swaggers/messages';
 import { USER_SWAGGERS_DATA } from 'src/data/swaggers/data/user.swagger';
-import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge here: validation/guards/Swagger stay, every handler forwards to
@@ -50,7 +49,8 @@ import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('users')
 export class UserController {
-  constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
+  // constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
+  constructor() {}
 
   @Get()
   @HttpCode(StatusCodes.OK)
@@ -68,11 +68,12 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.GET_USERS_SUCCESSFULLY,
   })
-  async getUsers(
+  getUsers(
     @Query(new ZodValidationPipe<GetUsersQueryDto>(getUsersQuerySchema))
-    query: GetUsersQueryDto,
+    _query: GetUsersQueryDto,
   ) {
-    return sendRpc(this.userClient, 'user.getUsers', query);
+    // return sendRpc(this.userClient, 'user.getUsers', query); // commented out: RabbitMQ request disabled
+    throw new Error('user.getUsers is disabled — RabbitMQ request commented out');
   }
 
   @Get('/detail-user')
@@ -85,8 +86,9 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.GET_USER_SUCCESSFULLY,
   })
-  async getDetailUserController(@CurrentUser() user: Record<string, string>) {
-    return sendRpc(this.userClient, 'user.getDetailUser', { userId: user.id });
+  getDetailUserController(@CurrentUser() _user: Record<string, string>) {
+    // return sendRpc(this.userClient, 'user.getDetailUser', { userId: user.id }); // commented out: RabbitMQ request disabled
+    throw new Error('user.getDetailUser is disabled — RabbitMQ request commented out');
   }
 
   @Get('/get-by-field')
@@ -101,11 +103,12 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.GET_USER_BY_FIELD_SUCCESSFULLY,
   })
-  async getUserByField(
+  getUserByField(
     @Query(new ZodValidationPipe(dataFieldSchema))
-    dataFieldDto: UserDataFieldDto,
+    _dataFieldDto: UserDataFieldDto,
   ): Promise<unknown> {
-    return sendRpc(this.userClient, 'user.getUserByField', dataFieldDto);
+    // return sendRpc(this.userClient, 'user.getUserByField', dataFieldDto); // commented out: RabbitMQ request disabled
+    throw new Error('user.getUserByField is disabled — RabbitMQ request commented out');
   }
 
   @Post()
@@ -119,11 +122,12 @@ export class UserController {
     status: StatusCodes.CREATED,
     description: USER_SWAGGER_MESSAGES.CREATE_USER_SUCCESSFULLY,
   })
-  async createUser(
+  createUser(
     @Body(new ZodValidationPipe(createUserSchema))
-    createUserDto: CreateUserDto,
+    _createUserDto: CreateUserDto,
   ): Promise<CreateUserResponseDto> {
-    return sendRpc(this.userClient, 'user.createUser', createUserDto);
+    // return sendRpc(this.userClient, 'user.createUser', createUserDto); // commented out: RabbitMQ request disabled
+    throw new Error('user.createUser is disabled — RabbitMQ request commented out');
   }
 
   @Put('')
@@ -137,16 +141,17 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.UPDATE_USER_SUCCESSFULLY,
   })
-  async updateUserController(
-    @CurrentUser() user: JwtGuardUser,
+  updateUserController(
+    @CurrentUser() _user: JwtGuardUser,
     @Body(new ZodValidationPipe<UpdateUserDto>(updateUserSchema))
-    updateUserDto: UpdateUserDto,
+    _updateUserDto: UpdateUserDto,
   ) {
-    return sendRpc(this.userClient, 'user.updateUser', {
-      id: user.id,
-      role: user.role,
-      data: updateUserDto,
-    });
+    // return sendRpc(this.userClient, 'user.updateUser', { // commented out: RabbitMQ request disabled
+    //   id: user.id,
+    //   role: user.role,
+    //   data: updateUserDto,
+    // });
+    throw new Error('user.updateUser is disabled — RabbitMQ request commented out');
   }
 
   @Put('/:id')
@@ -161,12 +166,13 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.UPDATE_USER_SUCCESSFULLY,
   })
-  async updateUserByAdminController(
-    @Param('id') id: string,
+  updateUserByAdminController(
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<UpdateUserDto>(updateUserSchema))
-    updateUserDto: UpdateUserDto,
+    _updateUserDto: UpdateUserDto,
   ) {
-    return sendRpc(this.userClient, 'user.updateUserByAdmin', { id, data: updateUserDto });
+    // return sendRpc(this.userClient, 'user.updateUserByAdmin', { id, data: updateUserDto }); // commented out: RabbitMQ request disabled
+    throw new Error('user.updateUserByAdmin is disabled — RabbitMQ request commented out');
   }
 
   @Put('/:id/status')
@@ -180,8 +186,9 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.UPDATE_USER_STATUS_SUCCESSFULLY,
   })
-  async updateStatusUserController(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'user.updateStatusUser', { id });
+  updateStatusUserController(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'user.updateStatusUser', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('user.updateStatusUser is disabled — RabbitMQ request commented out');
   }
 
   @Delete('/:id')
@@ -195,8 +202,9 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.DELETE_USER_SUCCESSFULLY,
   })
-  async deleteUserByAdminController(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'user.deleteUserByAdmin', { id });
+  deleteUserByAdminController(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'user.deleteUserByAdmin', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('user.deleteUserByAdmin is disabled — RabbitMQ request commented out');
   }
 
   @Post('change-password')
@@ -210,14 +218,15 @@ export class UserController {
     status: StatusCodes.OK,
     description: USER_SWAGGER_MESSAGES.CHANGE_PASSWORD_SUCCESSFULLY,
   })
-  async changePasswordController(
-    @CurrentUser() user: Record<string, string>,
+  changePasswordController(
+    @CurrentUser() _user: Record<string, string>,
     @Body(new ZodValidationPipe(changePasswordSchema))
-    changePasswordDto: ChangePasswordValues,
+    _changePasswordDto: ChangePasswordValues,
   ) {
-    return sendRpc(this.userClient, 'user.changePassword', {
-      userId: user.id,
-      data: changePasswordDto,
-    });
+    // return sendRpc(this.userClient, 'user.changePassword', { // commented out: RabbitMQ request disabled
+    //   userId: user.id,
+    //   data: changePasswordDto,
+    // });
+    throw new Error('user.changePassword is disabled — RabbitMQ request commented out');
   }
 }

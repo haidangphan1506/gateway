@@ -1,5 +1,5 @@
-import { Controller, Get, HttpCode, Inject } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Controller, Get, HttpCode } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -8,9 +8,9 @@ import {
 } from '@nestjs/swagger';
 import { StatusCodes } from 'http-status-codes';
 import { CurrentUser } from '@packages/decorators';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `dashboard`: guards/Swagger stay, every handler forwards to
@@ -20,7 +20,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('dashboard')
 export class DashboardController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Get('overview')
   @HttpCode(StatusCodes.OK)
@@ -29,7 +30,8 @@ export class DashboardController {
     description: 'Role-aware aggregate: stats, today schedule, monthly revenue/sessions and recent notifications',
   })
   @SwaggerResponse({ status: 200, description: 'Dashboard overview fetched' })
-  overview(@CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'dashboard.overview', { userId: user.id });
+  overview(@CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'dashboard.overview', { userId: user.id }); // commented out: RabbitMQ request disabled
+    throw new Error('dashboard.overview is disabled — RabbitMQ request commented out');
   }
 }

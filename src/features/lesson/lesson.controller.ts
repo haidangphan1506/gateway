@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -19,8 +19,8 @@ import {
   type GetLessonsQueryDto,
   type UpdateLessonDto,
 } from '@packages/entities/curriculum';
-import { sendRpc } from '@packages/helpers';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `lesson`: validation/guards/Swagger stay, every handler
@@ -30,7 +30,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('curriculum/lessons')
 export class LessonController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -40,12 +41,13 @@ export class LessonController {
   @ApiBody({ schema: { type: 'object', required: ['title'] } })
   @SwaggerResponse({ status: 201, description: 'Lesson created' })
   create(
-    @Query('curriculumId') curriculumId: string,
-    @Query('chapterId') chapterId: string | undefined,
+    @Query('curriculumId') _curriculumId: string,
+    @Query('chapterId') _chapterId: string | undefined,
     @Body(new ZodValidationPipe<CreateLessonBodyDto>(createLessonBodySchema))
-    data: CreateLessonBodyDto,
+    _data: CreateLessonBodyDto,
   ) {
-    return sendRpc(this.tutorClient, 'lesson.create', { curriculumId, chapterId, data });
+    // return sendRpc(this.tutorClient, 'lesson.create', { curriculumId, chapterId, data }); // commented out: RabbitMQ request disabled
+    throw new Error('lesson.create is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -57,9 +59,10 @@ export class LessonController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Lessons fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetLessonsQueryDto>(getLessonsQuerySchema))
-    query: GetLessonsQueryDto,
+    _query: GetLessonsQueryDto,
   ) {
-    return sendRpc(this.tutorClient, 'lesson.getAll', { query });
+    // return sendRpc(this.tutorClient, 'lesson.getAll', { query }); // commented out: RabbitMQ request disabled
+    throw new Error('lesson.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -67,8 +70,9 @@ export class LessonController {
   @ApiOperation({ summary: 'Get lesson by id' })
   @ApiParam({ name: 'id', description: 'Lesson ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Lesson fetched' })
-  getById(@Param('id') id: string) {
-    return sendRpc(this.tutorClient, 'lesson.getById', { id });
+  getById(@Param('id') _id: string) {
+    // return sendRpc(this.tutorClient, 'lesson.getById', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('lesson.getById is disabled — RabbitMQ request commented out');
   }
 
   @Put(':id')
@@ -77,11 +81,12 @@ export class LessonController {
   @ApiParam({ name: 'id', description: 'Lesson ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Lesson updated' })
   update(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<UpdateLessonDto>(updateLessonSchema))
-    data: UpdateLessonDto,
+    _data: UpdateLessonDto,
   ) {
-    return sendRpc(this.tutorClient, 'lesson.update', { id, data });
+    // return sendRpc(this.tutorClient, 'lesson.update', { id, data }); // commented out: RabbitMQ request disabled
+    throw new Error('lesson.update is disabled — RabbitMQ request commented out');
   }
 
   @Delete(':id')
@@ -89,7 +94,8 @@ export class LessonController {
   @ApiOperation({ summary: 'Delete lesson' })
   @ApiParam({ name: 'id', description: 'Lesson ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Lesson deleted' })
-  delete(@Param('id') id: string) {
-    return sendRpc(this.tutorClient, 'lesson.delete', { id });
+  delete(@Param('id') _id: string) {
+    // return sendRpc(this.tutorClient, 'lesson.delete', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('lesson.delete is disabled — RabbitMQ request commented out');
   }
 }

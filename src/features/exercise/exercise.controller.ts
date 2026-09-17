@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -21,9 +21,9 @@ import {
   type GradeExerciseDto,
   type SubmitExerciseDto,
 } from '@packages/entities/exercise';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `exercises`: validation/guards/Swagger stay, every handler
@@ -33,7 +33,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('exercises')
 export class ExerciseController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -41,10 +42,11 @@ export class ExerciseController {
   @SwaggerResponse({ status: 201, description: 'Exercise submitted' })
   create(
     @Body(new ZodValidationPipe<CreateExerciseDto>(createExerciseSchema))
-    dto: CreateExerciseDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: CreateExerciseDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'exercise.create', { userId: user?.id, data: dto });
+    // return sendRpc(this.tutorClient, 'exercise.create', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('exercise.create is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -62,10 +64,11 @@ export class ExerciseController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Exercises fetched' })
   getAll(
     @Query(new ZodValidationPipe<getExerciseDto>(getExerciseQuerySchema))
-    query: getExerciseDto,
-    @CurrentUser() user: JwtGuardUser,
+    _query: getExerciseDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'exercise.getAll', { userId: user?.id, query });
+    // return sendRpc(this.tutorClient, 'exercise.getAll', { userId: user?.id, query }); // commented out: RabbitMQ request disabled
+    throw new Error('exercise.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -73,8 +76,9 @@ export class ExerciseController {
   @ApiOperation({ summary: 'Get exercise detail' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Exercise fetched' })
-  getById(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'exercise.getById', { userId: user?.id, id });
+  getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'exercise.getById', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('exercise.getById is disabled — RabbitMQ request commented out');
   }
 
   @Patch(':id/submit')
@@ -83,12 +87,13 @@ export class ExerciseController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Exercise re-submitted' })
   submit(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<SubmitExerciseDto>(submitExerciseSchema))
-    dto: SubmitExerciseDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: SubmitExerciseDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'exercise.submit', { userId: user?.id, id, data: dto });
+    // return sendRpc(this.tutorClient, 'exercise.submit', { userId: user?.id, id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('exercise.submit is disabled — RabbitMQ request commented out');
   }
 
   @Patch(':id/grade')
@@ -97,11 +102,12 @@ export class ExerciseController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Exercise graded' })
   grade(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<GradeExerciseDto>(gradeExerciseSchema))
-    dto: GradeExerciseDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: GradeExerciseDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'exercise.grade', { userId: user?.id, id, data: dto });
+    // return sendRpc(this.tutorClient, 'exercise.grade', { userId: user?.id, id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('exercise.grade is disabled — RabbitMQ request commented out');
   }
 }

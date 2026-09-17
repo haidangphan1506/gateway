@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -19,8 +19,8 @@ import {
   type GetChaptersQueryDto,
   type UpdateChapterDto,
 } from '@packages/entities/curriculum';
-import { sendRpc } from '@packages/helpers';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `chapter`: validation/guards/Swagger stay, every handler
@@ -30,7 +30,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('chapter')
 export class ChapterController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Post(':curriculumId')
   @HttpCode(StatusCodes.CREATED)
@@ -39,11 +40,12 @@ export class ChapterController {
   @ApiBody({ schema: { type: 'object', required: ['title'] } })
   @SwaggerResponse({ status: 201, description: 'Chapter created' })
   create(
-    @Param('curriculumId') curriculumId: string,
+    @Param('curriculumId') _curriculumId: string,
     @Body(new ZodValidationPipe<CreateChapterDto>(createChapterSchema))
-    data: CreateChapterDto,
+    _data: CreateChapterDto,
   ) {
-    return sendRpc(this.tutorClient, 'chapter.create', { curriculumId, data });
+    // return sendRpc(this.tutorClient, 'chapter.create', { curriculumId, data }); // commented out: RabbitMQ request disabled
+    throw new Error('chapter.create is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -55,9 +57,10 @@ export class ChapterController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Chapters fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetChaptersQueryDto>(getChaptersQuerySchema))
-    query: GetChaptersQueryDto,
+    _query: GetChaptersQueryDto,
   ) {
-    return sendRpc(this.tutorClient, 'chapter.getAll', { query });
+    // return sendRpc(this.tutorClient, 'chapter.getAll', { query }); // commented out: RabbitMQ request disabled
+    throw new Error('chapter.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -65,8 +68,9 @@ export class ChapterController {
   @ApiOperation({ summary: 'Get chapter by id' })
   @ApiParam({ name: 'id', description: 'Chapter ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Chapter fetched' })
-  getById(@Param('id') id: string) {
-    return sendRpc(this.tutorClient, 'chapter.getById', { id });
+  getById(@Param('id') _id: string) {
+    // return sendRpc(this.tutorClient, 'chapter.getById', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('chapter.getById is disabled — RabbitMQ request commented out');
   }
 
   @Put(':id')
@@ -75,11 +79,12 @@ export class ChapterController {
   @ApiParam({ name: 'id', description: 'Chapter ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Chapter updated' })
   update(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<UpdateChapterDto>(updateChapterSchema))
-    data: UpdateChapterDto,
+    _data: UpdateChapterDto,
   ) {
-    return sendRpc(this.tutorClient, 'chapter.update', { id, data });
+    // return sendRpc(this.tutorClient, 'chapter.update', { id, data }); // commented out: RabbitMQ request disabled
+    throw new Error('chapter.update is disabled — RabbitMQ request commented out');
   }
 
   @Delete(':id')
@@ -87,7 +92,8 @@ export class ChapterController {
   @ApiOperation({ summary: 'Delete chapter' })
   @ApiParam({ name: 'id', description: 'Chapter ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Chapter deleted' })
-  delete(@Param('id') id: string) {
-    return sendRpc(this.tutorClient, 'chapter.delete', { id });
+  delete(@Param('id') _id: string) {
+    // return sendRpc(this.tutorClient, 'chapter.delete', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('chapter.delete is disabled — RabbitMQ request commented out');
   }
 }

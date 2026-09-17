@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -22,9 +22,9 @@ import {
   type GetSchedulesQueryDto,
   type UpdateScheduleDto,
 } from '@packages/entities/schedule';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for `schedules`: validation/guards/Swagger stay, every handler
@@ -34,7 +34,8 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('schedules')
 export class ScheduleController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -43,10 +44,11 @@ export class ScheduleController {
   @SwaggerResponse({ status: 201, description: 'Schedule created' })
   create(
     @Body(new ZodValidationPipe<CreateScheduleDto>(createScheduleSchema))
-    dto: CreateScheduleDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: CreateScheduleDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'schedule.create', { userId: user?.id, data: dto });
+    // return sendRpc(this.tutorClient, 'schedule.create', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('schedule.create is disabled — RabbitMQ request commented out');
   }
 
   @Post('bulk')
@@ -55,10 +57,11 @@ export class ScheduleController {
   @SwaggerResponse({ status: 201, description: 'Schedules created' })
   createBulk(
     @Body(new ZodValidationPipe<CreateSchedulesDto>(createSchedulesSchema))
-    dto: CreateSchedulesDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: CreateSchedulesDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'schedule.createBulk', { userId: user?.id, data: dto });
+    // return sendRpc(this.tutorClient, 'schedule.createBulk', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('schedule.createBulk is disabled — RabbitMQ request commented out');
   }
 
   @Get()
@@ -74,10 +77,11 @@ export class ScheduleController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedules fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetSchedulesQueryDto>(getSchedulesSchema))
-    query: GetSchedulesQueryDto,
-    @CurrentUser() user: JwtGuardUser,
+    _query: GetSchedulesQueryDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'schedule.getAll', { userId: user?.id, query });
+    // return sendRpc(this.tutorClient, 'schedule.getAll', { userId: user?.id, query }); // commented out: RabbitMQ request disabled
+    throw new Error('schedule.getAll is disabled — RabbitMQ request commented out');
   }
 
   @Get('class/:classId')
@@ -85,8 +89,9 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Get schedules by class' })
   @ApiParam({ name: 'classId', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedules fetched' })
-  getByClass(@Param('classId') classId: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'schedule.getByClass', { userId: user?.id, classId });
+  getByClass(@Param('classId') _classId: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'schedule.getByClass', { userId: user?.id, classId }); // commented out: RabbitMQ request disabled
+    throw new Error('schedule.getByClass is disabled — RabbitMQ request commented out');
   }
 
   @Get(':id')
@@ -94,8 +99,9 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Get schedule detail' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedule fetched' })
-  getById(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'schedule.getById', { userId: user?.id, id });
+  getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'schedule.getById', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('schedule.getById is disabled — RabbitMQ request commented out');
   }
 
   @Patch(':id')
@@ -104,12 +110,13 @@ export class ScheduleController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedule updated' })
   update(
-    @Param('id') id: string,
+    @Param('id') _id: string,
     @Body(new ZodValidationPipe<UpdateScheduleDto>(updateScheduleSchema))
-    dto: UpdateScheduleDto,
-    @CurrentUser() user: JwtGuardUser,
+    _dto: UpdateScheduleDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'schedule.update', { userId: user?.id, id, data: dto });
+    // return sendRpc(this.tutorClient, 'schedule.update', { userId: user?.id, id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('schedule.update is disabled — RabbitMQ request commented out');
   }
 
   @Delete(':id')
@@ -117,7 +124,8 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Delete schedule' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedule deleted' })
-  del(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'schedule.delete', { userId: user?.id, id });
+  del(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'schedule.delete', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
+    throw new Error('schedule.delete is disabled — RabbitMQ request commented out');
   }
 }

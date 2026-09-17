@@ -4,14 +4,13 @@ import {
   Delete,
   Get,
   HttpCode,
-  Inject,
   Param,
   Post,
   Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -35,8 +34,8 @@ import {
   type UpdateManagedStudentDto,
   type ListManagedUsersQueryDto,
 } from '@packages/entities/admin';
-import { sendRpc } from '@packages/helpers';
-import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
+// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 const CREATE_ACCOUNT_BODY_SCHEMA = {
   type: 'object',
@@ -113,7 +112,8 @@ const UPDATE_STUDENT_BODY_SCHEMA = {
 @Roles('ADMIN')
 @Controller('admin')
 export class AdminController {
-  constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
+  // constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
+  constructor() {}
 
   // ─── Tutors ────────────────────────────────────────────────────────
   @Post('tutors')
@@ -121,8 +121,9 @@ export class AdminController {
   @ApiOperation({ summary: 'Create tutor', description: 'Create a new TUTOR account (admin only)' })
   @ApiBody({ schema: CREATE_ACCOUNT_BODY_SCHEMA })
   @SwaggerResponse({ status: 201, description: 'Tutor created' })
-  createTutor(@Body(new ZodValidationPipe(createManagedUserSchema)) dto: CreateManagedUserDto) {
-    return sendRpc(this.userClient, 'admin.createTutor', dto);
+  createTutor(@Body(new ZodValidationPipe(createManagedUserSchema)) _dto: CreateManagedUserDto) {
+    // return sendRpc(this.userClient, 'admin.createTutor', dto); // commented out: RabbitMQ request disabled
+    throw new Error('admin.createTutor is disabled — RabbitMQ request commented out');
   }
 
   @Get('tutors')
@@ -140,9 +141,10 @@ export class AdminController {
   @SwaggerResponse({ status: 200, description: 'Tutors fetched' })
   listTutors(
     @Query(new ZodValidationPipe<ListManagedUsersQueryDto>(listManagedUsersQuerySchema))
-    query: ListManagedUsersQueryDto,
+    _query: ListManagedUsersQueryDto,
   ) {
-    return sendRpc(this.userClient, 'admin.listTutors', query);
+    // return sendRpc(this.userClient, 'admin.listTutors', query); // commented out: RabbitMQ request disabled
+    throw new Error('admin.listTutors is disabled — RabbitMQ request commented out');
   }
 
   @Get('tutors/:id')
@@ -151,8 +153,9 @@ export class AdminController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Tutor detail' })
   @SwaggerResponse({ status: 404, description: 'Tutor not found' })
-  getTutor(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'admin.getTutor', { id });
+  getTutor(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'admin.getTutor', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('admin.getTutor is disabled — RabbitMQ request commented out');
   }
 
   @Put('tutors/:id')
@@ -162,10 +165,11 @@ export class AdminController {
   @ApiBody({ schema: UPDATE_ACCOUNT_BODY_SCHEMA })
   @SwaggerResponse({ status: 200, description: 'Tutor updated' })
   updateTutor(
-    @Param('id') id: string,
-    @Body(new ZodValidationPipe(updateManagedUserSchema)) dto: UpdateManagedUserDto,
+    @Param('id') _id: string,
+    @Body(new ZodValidationPipe(updateManagedUserSchema)) _dto: UpdateManagedUserDto,
   ) {
-    return sendRpc(this.userClient, 'admin.updateTutor', { id, data: dto });
+    // return sendRpc(this.userClient, 'admin.updateTutor', { id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('admin.updateTutor is disabled — RabbitMQ request commented out');
   }
 
   @Delete('tutors/:id')
@@ -173,8 +177,9 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete tutor' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Tutor deleted' })
-  deleteTutor(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'admin.deleteTutor', { id });
+  deleteTutor(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'admin.deleteTutor', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('admin.deleteTutor is disabled — RabbitMQ request commented out');
   }
 
   // ─── Students ──────────────────────────────────────────────────────
@@ -186,8 +191,9 @@ export class AdminController {
   })
   @ApiBody({ schema: CREATE_ACCOUNT_BODY_SCHEMA })
   @SwaggerResponse({ status: 201, description: 'Student created' })
-  createStudent(@Body(new ZodValidationPipe(createManagedUserSchema)) dto: CreateManagedUserDto) {
-    return sendRpc(this.userClient, 'admin.createStudent', dto);
+  createStudent(@Body(new ZodValidationPipe(createManagedUserSchema)) _dto: CreateManagedUserDto) {
+    // return sendRpc(this.userClient, 'admin.createStudent', dto); // commented out: RabbitMQ request disabled
+    throw new Error('admin.createStudent is disabled — RabbitMQ request commented out');
   }
 
   @Get('students')
@@ -208,9 +214,10 @@ export class AdminController {
   @SwaggerResponse({ status: 200, description: 'Students fetched' })
   listStudents(
     @Query(new ZodValidationPipe<ListManagedUsersQueryDto>(listManagedUsersQuerySchema))
-    query: ListManagedUsersQueryDto,
+    _query: ListManagedUsersQueryDto,
   ) {
-    return sendRpc(this.userClient, 'admin.listStudents', query);
+    // return sendRpc(this.userClient, 'admin.listStudents', query); // commented out: RabbitMQ request disabled
+    throw new Error('admin.listStudents is disabled — RabbitMQ request commented out');
   }
 
   @Get('students/:id')
@@ -219,8 +226,9 @@ export class AdminController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Student detail' })
   @SwaggerResponse({ status: 404, description: 'Student not found' })
-  getStudent(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'admin.getStudent', { id });
+  getStudent(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'admin.getStudent', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('admin.getStudent is disabled — RabbitMQ request commented out');
   }
 
   @Put('students/:id')
@@ -233,10 +241,11 @@ export class AdminController {
   @ApiBody({ schema: UPDATE_STUDENT_BODY_SCHEMA })
   @SwaggerResponse({ status: 200, description: 'Student updated' })
   updateStudent(
-    @Param('id') id: string,
-    @Body(new ZodValidationPipe(updateManagedStudentSchema)) dto: UpdateManagedStudentDto,
+    @Param('id') _id: string,
+    @Body(new ZodValidationPipe(updateManagedStudentSchema)) _dto: UpdateManagedStudentDto,
   ) {
-    return sendRpc(this.userClient, 'admin.updateStudent', { id, data: dto });
+    // return sendRpc(this.userClient, 'admin.updateStudent', { id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('admin.updateStudent is disabled — RabbitMQ request commented out');
   }
 
   @Delete('students/:id')
@@ -244,7 +253,8 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete student' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Student deleted' })
-  deleteStudent(@Param('id') id: string) {
-    return sendRpc(this.userClient, 'admin.deleteStudent', { id });
+  deleteStudent(@Param('id') _id: string) {
+    // return sendRpc(this.userClient, 'admin.deleteStudent', { id }); // commented out: RabbitMQ request disabled
+    throw new Error('admin.deleteStudent is disabled — RabbitMQ request commented out');
   }
 }

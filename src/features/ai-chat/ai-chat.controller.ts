@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Post, Query } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Body, Controller, Delete, Get, HttpCode, Post, Query } from '@nestjs/common';
+// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -17,9 +17,9 @@ import {
   type ChatDto,
   type GetHistoryQueryDto,
 } from '@packages/entities/ai-chat';
-import { sendRpc } from '@packages/helpers';
+// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
+// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
 
 /**
  * Gateway is a thin HTTP edge for the AI assistant (`ai-chat`): validation/guards/Swagger stay,
@@ -29,15 +29,20 @@ import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants';
 @ApiBearerAuth('access-token')
 @Controller('ai-chat')
 export class AiChatController {
-  constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
+  constructor() {}
 
   @Post('chat')
   @HttpCode(StatusCodes.OK)
   @ApiOperation({ summary: 'Chat with AI assistant', description: 'Send a message and get a reply (history is DB-backed)' })
   @ApiBody({ schema: { type: 'object', required: ['message'] } })
   @SwaggerResponse({ status: 200, description: 'AI reply fetched' })
-  chat(@Body(new ZodValidationPipe<ChatDto>(chatSchema)) dto: ChatDto, @CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'ai.chat', { userId: user.id, data: dto });
+  chat(
+    @Body(new ZodValidationPipe<ChatDto>(chatSchema)) _dto: ChatDto,
+    @CurrentUser() _user: JwtGuardUser,
+  ) {
+    // return sendRpc(this.tutorClient, 'ai.chat', { userId: user.id, data: dto }); // commented out: RabbitMQ request disabled
+    throw new Error('ai.chat is disabled — RabbitMQ request commented out');
   }
 
   @Get('history')
@@ -47,17 +52,19 @@ export class AiChatController {
   @SwaggerResponse({ status: 200, description: 'Chat history fetched' })
   getHistory(
     @Query(new ZodValidationPipe<GetHistoryQueryDto>(getHistoryQuerySchema))
-    query: GetHistoryQueryDto,
-    @CurrentUser() user: JwtGuardUser,
+    _query: GetHistoryQueryDto,
+    @CurrentUser() _user: JwtGuardUser,
   ) {
-    return sendRpc(this.tutorClient, 'ai.history', { userId: user.id, query });
+    // return sendRpc(this.tutorClient, 'ai.history', { userId: user.id, query }); // commented out: RabbitMQ request disabled
+    throw new Error('ai.history is disabled — RabbitMQ request commented out');
   }
 
   @Delete('history')
   @HttpCode(StatusCodes.OK)
   @ApiOperation({ summary: 'Clear AI chat history' })
   @SwaggerResponse({ status: 200, description: 'Chat history cleared' })
-  clearHistory(@CurrentUser() user: JwtGuardUser) {
-    return sendRpc(this.tutorClient, 'ai.clearHistory', { userId: user.id });
+  clearHistory(@CurrentUser() _user: JwtGuardUser) {
+    // return sendRpc(this.tutorClient, 'ai.clearHistory', { userId: user.id }); // commented out: RabbitMQ request disabled
+    throw new Error('ai.clearHistory is disabled — RabbitMQ request commented out');
   }
 }

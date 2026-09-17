@@ -25,16 +25,14 @@ import { EmailModule } from './features/email/email.module';
 import { JwtAuthGuard, LanguageGuard } from '@packages/guards';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { RabbitMQModule } from './features/rabbitmq/rabbitmq.module';
-import { RmqClientsModule } from './features/rmq-clients/rmq-clients.module';
+import { KafkaModule } from './features/kafka/kafka.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    RabbitMQModule,
-    RmqClientsModule,
+    KafkaModule,
     UserModule,
     AdminModule,
     AuthModule,
