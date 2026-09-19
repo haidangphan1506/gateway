@@ -1,6 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
@@ -30,24 +29,23 @@ import {
   ResetPasswordResponseDto,
 } from '@packages/entities/auth';
 import { ApiResponse, Public } from '@packages/decorators';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import { ZodValidationPipe } from '@packages/pipes';
 import type { FacebookProfile, GoogleProfile } from '@packages/strategy';
-// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 type RequestWithGoogleProfile = Request & { user: GoogleProfile };
 type RequestWithFacebookProfile = Request & { user: FacebookProfile };
 
 /**
  * Gateway is a thin HTTP edge for `auth`: it keeps validation, guards and Swagger metadata,
- * but every handler forwards to the `user` service over RabbitMQ via `sendRpc` — no local
- * business logic or database access lives here anymore.
+ * but every handler forwards to the `user` service over Kafka via `KafkaProducer.send` — no
+ * local business logic or database access lives here anymore.
  */
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
-    // @Inject(USER_SERVICE) private readonly userClient: ClientProxy, // commented out: RabbitMQ client removed
+    private readonly kafkaProducer: KafkaProducer,
     private readonly configService: ConfigService,
   ) {}
 
@@ -76,10 +74,9 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Login successful' })
   register(
     @Body(new ZodValidationPipe<RegisterDto>(registerSchema))
-    _registerDto: RegisterDto,
+    registerDto: RegisterDto,
   ): Promise<RegisterResponseDto> {
-    // return sendRpc(this.userClient, 'auth.register', registerDto); // commented out: RabbitMQ request disabled
-    throw new Error('auth.register is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('auth.register', registerDto);
   }
 
   @Public()
@@ -123,10 +120,9 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Login successful' })
   login(
     @Body(new ZodValidationPipe<LoginDto>(loginSchema))
-    _loginDto: LoginDto,
+    loginDto: LoginDto,
   ): Promise<LoginResponseDto> {
-    // return sendRpc(this.userClient, 'auth.login', loginDto); // commented out: RabbitMQ request disabled
-    throw new Error('auth.login is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('auth.login', loginDto);
   }
 
   @Public()
@@ -171,10 +167,9 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Login successful' })
   loginByUserCode(
     @Body(new ZodValidationPipe<LoginByUserCodeDto>(loginByUserCodeSchema))
-    _dto: LoginByUserCodeDto,
+    dto: LoginByUserCodeDto,
   ): Promise<LoginResponseDto> {
-    // return sendRpc(this.userClient, 'auth.loginByUserCode', dto); // commented out: RabbitMQ request disabled
-    throw new Error('auth.loginByUserCode is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('auth.loginByUserCode', dto);
   }
 
   @Public()
@@ -198,10 +193,9 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Token refreshed' })
   refresh(
     @Body(new ZodValidationPipe<RefreshTokenBodyDto>(refreshTokenBodySchema))
-    _body: RefreshTokenBodyDto,
+    body: RefreshTokenBodyDto,
   ): Promise<LoginResponseDto> {
-    // return sendRpc(this.userClient, 'auth.refresh', body); // commented out: RabbitMQ request disabled
-    throw new Error('auth.refresh is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('auth.refresh', body);
   }
 
   @Public()
@@ -221,10 +215,9 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Forgot password successful' })
   forgotPassword(
     @Body(new ZodValidationPipe<ForgotPasswordDto>(forgotPasswordSchema))
-    _forgotPasswordDto: ForgotPasswordDto,
+    forgotPasswordDto: ForgotPasswordDto,
   ): Promise<ForgotPasswordResponseDto> {
-    // return sendRpc(this.userClient, 'auth.forgotPassword', forgotPasswordDto); // commented out: RabbitMQ request disabled
-    throw new Error('auth.forgotPassword is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('auth.forgotPassword', forgotPasswordDto);
   }
 
   @ApiBearerAuth('access-token')
@@ -260,10 +253,9 @@ export class AuthController {
   @ApiResponse({ statusCode: StatusCodes.OK, message: 'Reset password successful' })
   resetPassword(
     @Body(new ZodValidationPipe<ResetPasswordDto>(resetPasswordSchema))
-    _resetPasswordDto: ResetPasswordDto,
+    resetPasswordDto: ResetPasswordDto,
   ): Promise<ResetPasswordResponseDto> {
-    // return sendRpc(this.userClient, 'auth.resetPassword', resetPasswordDto); // commented out: RabbitMQ request disabled
-    throw new Error('auth.resetPassword is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('auth.resetPassword', resetPasswordDto);
   }
 
   @Public()
@@ -289,25 +281,23 @@ export class AuthController {
     status: 302,
     description: 'Redirects to frontend with tokens in query params',
   })
-  googleAuthCallback(
-    @Req() _req: RequestWithGoogleProfile,
-    @Res() _res: Response,
+  async googleAuthCallback(
+    @Req() req: RequestWithGoogleProfile,
+    @Res() res: Response,
   ): Promise<void> {
-    // const { accessToken, refreshToken } = await sendRpc<LoginResponseDto>( // commented out: RabbitMQ request disabled
-    //   this.userClient,
-    //   'auth.googleLogin',
-    //   req.user,
-    // );
-    //
-    // const redirectBase =
-    //   this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
-    //   'http://localhost:3000/oauth/callback';
-    // const redirectUrl = new URL(redirectBase);
-    // redirectUrl.searchParams.set('accessToken', accessToken);
-    // redirectUrl.searchParams.set('refreshToken', refreshToken);
-    //
-    // res.redirect(redirectUrl.toString());
-    throw new Error('auth.googleLogin is disabled — RabbitMQ request commented out');
+    const { accessToken, refreshToken } = await this.kafkaProducer.send<LoginResponseDto, GoogleProfile>(
+      'auth.googleLogin',
+      req.user,
+    );
+
+    const redirectBase =
+      this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
+      'http://localhost:3000/oauth/callback';
+    const redirectUrl = new URL(redirectBase);
+    redirectUrl.searchParams.set('accessToken', accessToken);
+    redirectUrl.searchParams.set('refreshToken', refreshToken);
+
+    res.redirect(redirectUrl.toString());
   }
 
   // GET /auth/facebook
@@ -335,24 +325,22 @@ export class AuthController {
     status: 302,
     description: 'Redirects to frontend with tokens in query params',
   })
-  facebookAuthCallback(
-    @Req() _req: RequestWithFacebookProfile,
-    @Res() _res: Response,
+  async facebookAuthCallback(
+    @Req() req: RequestWithFacebookProfile,
+    @Res() res: Response,
   ): Promise<void> {
-    // const { accessToken, refreshToken } = await sendRpc<LoginResponseDto>( // commented out: RabbitMQ request disabled
-    //   this.userClient,
-    //   'auth.facebookLogin',
-    //   req.user,
-    // );
-    //
-    // const redirectBase =
-    //   this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
-    //   'http://localhost:3000/oauth/callback';
-    // const redirectUrl = new URL(redirectBase);
-    // redirectUrl.searchParams.set('accessToken', accessToken);
-    // redirectUrl.searchParams.set('refreshToken', refreshToken);
-    //
-    // res.redirect(redirectUrl.toString());
-    throw new Error('auth.facebookLogin is disabled — RabbitMQ request commented out');
+    const { accessToken, refreshToken } = await this.kafkaProducer.send<
+      LoginResponseDto,
+      FacebookProfile
+    >('auth.facebookLogin', req.user);
+
+    const redirectBase =
+      this.configService.get<string>('GOOGLE_OAUTH_REDIRECT_URL') ??
+      'http://localhost:3000/oauth/callback';
+    const redirectUrl = new URL(redirectBase);
+    redirectUrl.searchParams.set('accessToken', accessToken);
+    redirectUrl.searchParams.set('refreshToken', refreshToken);
+
+    res.redirect(redirectUrl.toString());
   }
 }

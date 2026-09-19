@@ -9,11 +9,15 @@ thin HTTP edge with **no service or repository layer and no database** for any f
 business logic and each domain's Postgres schema live only in the service that owns it. See
 `[[gateway-rmq-refactor]]` memory for why and what the message-pattern contract looks like.
 
-> **Current caveat (2026-09-19)**: `sendRpc` and every existing feature controller's RMQ call
-> site are currently commented out mid-migration to Kafka — `src/packages/helpers/rmq.helper.ts`
-> has been deleted. The pattern below is still the target shape; verify `sendRpc` is actually
-> exported from `@packages/helpers` before relying on it for new work. See
-> `[[kafka-migration-wip]]` memory.
+> **Current caveat (2026-09-19)**: `sendRpc` and most existing feature controllers' RMQ call
+> sites are still commented out mid-migration to Kafka — `src/packages/helpers/rmq.helper.ts`
+> has been deleted. The pattern below is still the target shape for RMQ-owned features; verify
+> `sendRpc` is actually exported from `@packages/helpers` before relying on it for new work.
+> **`AuthController` and a few `kafka.*` demo/relay routes are already migrated** and use
+> `this.kafkaProducer.send('<pattern>', payload)` (`KafkaModule`/`KafkaProducer`, not `sendRpc`)
+> instead — see `[[kafka-migration-wip]]` for which routes, and `[[kafka-rpc-plumbing]]` for the
+> topic-provisioning and exception-filter wiring required on the owning service's side before a
+> new Kafka route will work end-to-end (it's more than just adding the producer call here).
 
 - **Layers**: `{name}.controller.ts` + `{name}.module.ts` only. No `{name}.service.ts`, no
   `{name}.repository.ts`. If a change needs new business logic, it goes in the owning service's

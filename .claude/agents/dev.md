@@ -47,11 +47,16 @@ across every feature, is validated here (Zod, guards) then forwarded over Rabbit
 - Read `CLAUDE.md` and the rule files in `.claude/rules/` (`nestjs-feature-pattern.md`,
   `conventions.md`) — they describe gateway's actual shape: thin proxy controllers only, no
   service/repository layer, no local Postgres.
-- **Current caveat**: `sendRpc` and every existing feature controller's RMQ call site are
+- **Current caveat**: `sendRpc` and most existing feature controllers' RMQ call sites are
   commented out mid-migration to Kafka as of 2026-09-19 (`rmq.helper.ts` was deleted). Check
   `grep sendRpc src/packages/helpers/index.ts` before assuming it compiles, and don't "fix" the
-  commented-out calls as a bug unless asked — see memory for the current state and the
-  `kafka.ping`/`kafka.echo` reference pattern in `app.controller.ts`.
+  commented-out calls as a bug unless asked. `AuthController` and several `kafka.*` relay routes
+  are already migrated and use `this.kafkaProducer.send('<pattern>', payload)` instead — see
+  `[[kafka-migration-wip]]` memory for which routes and `[[kafka-rpc-plumbing]]` before adding a
+  new one: a new Kafka route needs its topic (and `.reply` topic) added to `ALL_KAFKA_TOPICS` in
+  `src/features/kafka/kafka.constants.ts`, plus matching changes on the owning service's side
+  (global `RpcExceptionFilter` registration, its own `KAFKA_SERVER_TOPICS`) — a gateway-only
+  change will compile but fail at runtime.
 - For scaffolding, prefer the `generate-*` skills (via the Skill tool). If you're adding a
   brand-new cross-service capability (not just a route on top of an existing `user`-service
   method), use the root `add-rpc-endpoint` skill (`../.claude/skills/`) instead — it covers both
