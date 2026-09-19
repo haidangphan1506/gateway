@@ -8,7 +8,14 @@ description: Scaffold the controller layer (src/features/{name}/{name}.controlle
 Create `src/features/foo/foo.controller.ts` as a **thin RPC-proxy**: every route validates
 input then forwards to the owning service via `sendRpc` — no local business logic. See
 `src/features/admin/admin.controller.ts`, `src/features/email/email.controller.ts`, or
-`src/features/ai-chat/ai-chat.controller.ts` for real, current examples.
+`src/features/ai-chat/ai-chat.controller.ts` for the shape (their `sendRpc(...)` calls are
+currently commented out mid-migration to Kafka — see `[[kafka-migration-wip]]` memory — so read
+them for structure, not as proof the call compiles today).
+
+**Before scaffolding**: confirm `sendRpc` is actually exported from `@packages/helpers`
+(`grep sendRpc src/packages/helpers/index.ts`). If it's commented out, say so and ask whether to
+scaffold the RMQ shape anyway (won't compile until `rmq.helper.ts` is restored) or wire this
+feature to Kafka instead (mirror `app.controller.ts`'s `kafka.ping`/`kafka.echo` routes).
 
 ## Prerequisites
 - DTOs + schemas exist under `@packages/entities/foo` (see `generate-entity`).

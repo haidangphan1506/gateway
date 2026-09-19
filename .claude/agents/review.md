@@ -35,8 +35,14 @@ for branch scope. Focus on what changed and code it directly affects.
 - **No service/repository layer introduced.** A new `{name}.service.ts` or
   `{name}.repository.ts` under `src/features/` is a bug here — that logic belongs in `user`
   (or whichever service owns the domain) behind a `@MessagePattern`, not in gateway.
-- Every RPC call goes through `sendRpc(this.xClient, '<pattern>', payload)` — a direct
-  `client.send(...)` call bypasses the `RpcErrorPayload` → `HttpException` translation.
+- Every RMQ RPC call goes through `sendRpc(this.xClient, '<pattern>', payload)` — a direct
+  `client.send(...)` call on an RMQ `ClientProxy` bypasses the `RpcErrorPayload` →
+  `HttpException` translation. Exception: `KafkaProducer.emit(...)`/`.send(...)` calls in
+  `app.controller.ts`'s Kafka demo routes are not a violation — `sendRpc` only wraps RMQ
+  `ClientProxy` errors, it doesn't support Kafka. See `[[kafka-migration-wip]]` memory: gateway
+  is currently mid-migration and most existing controllers have their `sendRpc` calls commented
+  out — that's expected WIP state, not a finding, unless the diff itself introduces new dead
+  code.
 - The message pattern string matches what the owning service actually exposes (can't verify
   the other repo directly, but flag any pattern that looks inconsistent with this repo's
   existing naming, e.g. wrong casing or a feature prefix that doesn't match the controller).

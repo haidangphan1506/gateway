@@ -16,8 +16,8 @@ export class KafkaProducer implements OnModuleInit, OnModuleDestroy {
     await this.client.close();
   }
 
-  emit<T>(topic: string, message: T) {
-    return firstValueFrom(this.client.emit(topic, message));
+  emit<TResult = unknown, TInput = unknown>(topic: string, message: TInput): Promise<TResult> {
+    return firstValueFrom(this.client.emit<TResult, TInput>(topic, message));
   }
 
   send<TResponse, TRequest>(topic: string, message: TRequest) {

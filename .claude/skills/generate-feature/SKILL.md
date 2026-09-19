@@ -29,6 +29,12 @@ Ask the user (or infer from the request) before generating:
 
 If fields are unclear, propose a sensible set and confirm before writing files.
 
+**Before scaffolding**: confirm `sendRpc` is actually exported from `@packages/helpers`
+(`grep sendRpc src/packages/helpers/index.ts`) — as of 2026-09-19 it's commented out
+gateway-wide mid-migration to Kafka (see `[[kafka-migration-wip]]` memory), so a freshly
+scaffolded `sendRpc`-based controller won't compile until `rmq.helper.ts` is restored. Flag this
+before generating rather than producing code that fails the build step below.
+
 ## Composition — run the layer skills in order
 
 This is the orchestrator for gateway's two real layers:
