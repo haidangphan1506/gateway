@@ -1,6 +1,7 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Observable, tap, finalize } from 'rxjs';
+import { getRequestContext } from '@packages/context/request-context';
 
 const SENSITIVE_KEYS = [
   'password',
@@ -49,26 +50,28 @@ export class LoggerInterceptor implements NestInterceptor {
     const { method, url } = request;
     const body: unknown = request.body;
     const startTime = Date.now();
+    const ctx = getRequestContext();
+    const trace = ctx ? `correlationId=${ctx.correlationId} traceId=${ctx.traceId} ` : '';
 
     if (body && typeof body === 'object' && Object.keys(body).length > 0) {
-      this.logger.log(`[Request] ${method} ${url} - body=${stringifyForLog(body)}`);
+      this.logger.log(`[Request] ${trace}${method} ${url} - body=${stringifyForLog(body)}`);
     }
 
     return next.handle().pipe(
       tap({
         next: (data) => {
           this.logger.log(
-            `[Response] ${method} ${url} - ${response.statusCode} - data=${stringifyForLog(data)}`,
+            `[Response] ${trace}${method} ${url} - ${response.statusCode} - data=${stringifyForLog(data)}`,
           );
         },
         error: (err) => {
-          this.logger.error(`[Error] ${method} ${url} - ${(err as Error).message}`);
+          this.logger.error(`[Error] ${trace}${method} ${url} - ${(err as Error).message}`);
         },
       }),
 
       finalize(() => {
         const duration = Date.now() - startTime;
-        this.logger.log(`[Timing] ${method} ${url} - ${duration}ms`);
+        this.logger.log(`[Timing] ${trace}${method} ${url} - ${duration}ms`);
       }),
     );
   }

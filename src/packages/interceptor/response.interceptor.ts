@@ -6,6 +6,7 @@ import { API_RESPONSE_KEY } from '../decorators';
 import { type ApiResponseInterface, type ApiResponseOptions } from '../interfaces';
 import { DEFAULT_LANGUAGE, type RequestWithLanguage } from '@packages/guards/language.guard';
 import { SUCCESS_TRANSLATIONS, translateMessage } from '../../data/i18n';
+import { getRequestContext } from '@packages/context/request-context';
 
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponseInterface<T>> {
@@ -32,6 +33,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponseInt
           timestamp: new Date(),
           method: request.method,
           path: request.url,
+          correlationId: getRequestContext()?.correlationId,
         };
       }),
     );

@@ -29,10 +29,25 @@
   `@packages/decorators` for success messages.
 - **Request logging**: the global `LoggerInterceptor` (`@packages/interceptor`, wired in
   `main.ts`) logs `[Request]`/`[Response]`/`[Error]`/`[Timing]` lines including the request body
-  and response data, redacting any key in its `SENSITIVE_KEYS` list (`password`, `token`,
+  and response data (prefixed with `correlationId=... traceId=...` when present — see the
+  tracing bullet below), redacting any key in its `SENSITIVE_KEYS` list (`password`, `token`,
   `accessToken`, `refreshToken`, etc.) and truncating logged JSON at 1000 chars. If a new field
   name carrying a secret is introduced (e.g. a new `*Secret`/`*Key` DTO field), add it to
   `SENSITIVE_KEYS` rather than relying on truncation to hide it.
+- **Distributed tracing** (added 2026-09-19): `@packages/context/request-context.ts` holds an
+  `AsyncLocalStorage`-based `RequestContext` (`correlationId`/`traceId`/`parentTraceId`/
+  `serviceName`), opened per-HTTP-request by `requestContextMiddleware`
+  (`@packages/context/request-context.middleware.ts`, wired first in `main.ts`'s `app.use(...)`
+  chain — reuses an incoming `x-correlation-id` header or mints one, and echoes it back on the
+  response). `KafkaProducer.send()`/`.emit()` automatically read this context and attach it as
+  real Kafka message headers on every outbound call — **no call site needs to do anything**; the
+  wrapping is transparent (`this.kafkaProducer.send('auth.login', loginDto)` is unchanged). Both
+  `ResponseInterceptor` and `HttpExceptionFilter` include `correlationId` in every JSON response,
+  and `HttpExceptionFilter` also surfaces `serviceName` — which downstream service actually threw
+  — when the RPC error payload carried one through. See `[[kafka-rpc-plumbing]]` memory for the
+  full mechanism (how headers survive `KafkaRequestSerializer`, the sibling repos' matching
+  `TraceContextInterceptor`) and why a new Kafka route doesn't need to do anything extra to get
+  tracing for free.
 - **RabbitMQ pass/fail logging**: `RabbitMQProducer.publish` and `RabbitMQConsumer.subscribe`
   (`src/features/rabbitmq/*`) log an explicit `[Publish OK/FAILED]` / `[Consume OK/FAILED]` line
   per message (with routing key/queue and, on failure, the error + stack) — this is built into

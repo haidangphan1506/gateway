@@ -2,6 +2,7 @@ import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from
 import { Response } from 'express';
 import { DEFAULT_LANGUAGE, type RequestWithLanguage } from '@packages/guards/language.guard';
 import { ERROR_TRANSLATIONS, translateMessage } from '../../data/i18n';
+import { getRequestContext } from '@packages/context/request-context';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -54,12 +55,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
         })
       : rawErrors;
 
+    // Which downstream service actually threw, if the RPC error payload carried one through
+    // (see RpcExceptionFilter in the owning service's repo, and [[kafka-rpc-plumbing]] memory).
+    const serviceName = (exceptionResponse as { serviceName?: string } | null)?.serviceName;
+
     response.status(status).json({
       success: false,
       statusCode: status,
       message,
       errors,
       path: request.url,
+      correlationId: getRequestContext()?.correlationId,
+      ...(serviceName && { serviceName }),
       ...(status >= 500 && process.env.NODE_ENV !== 'production' && { trace: exception.stack }),
       timestamp: new Date().toISOString(),
     });

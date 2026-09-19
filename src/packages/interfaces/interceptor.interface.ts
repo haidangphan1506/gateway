@@ -5,6 +5,8 @@ export interface ApiResponseInterface<T = unknown> {
   timestamp: Date;
   method: string;
   path: string;
+  /** Echoes the `x-correlation-id` for this request — quote it when asking for logs. */
+  correlationId?: string;
 }
 
 export interface ApiResponseOptions {

@@ -37,12 +37,16 @@ for branch scope. Focus on what changed and code it directly affects.
   (or whichever service owns the domain) behind a `@MessagePattern`, not in gateway.
 - Every RMQ RPC call goes through `sendRpc(this.xClient, '<pattern>', payload)` — a direct
   `client.send(...)` call on an RMQ `ClientProxy` bypasses the `RpcErrorPayload` →
-  `HttpException` translation. Exception: `KafkaProducer.emit(...)`/`.send(...)` calls in
-  `app.controller.ts`'s Kafka demo routes are not a violation — `sendRpc` only wraps RMQ
-  `ClientProxy` errors, it doesn't support Kafka. See `[[kafka-migration-wip]]` memory: gateway
-  is currently mid-migration and most existing controllers have their `sendRpc` calls commented
-  out — that's expected WIP state, not a finding, unless the diff itself introduces new dead
-  code.
+  `HttpException` translation. Exception: `KafkaProducer.emit(...)`/`.send(...)` calls are not a
+  violation — `sendRpc` only wraps RMQ `ClientProxy` errors, it doesn't support Kafka. This is no
+  longer just the small `app.controller.ts` demo routes: all of `AuthController` plus several
+  `kafka.*` relay routes are fully migrated to `KafkaProducer.send()`. See `[[kafka-migration-wip]]`
+  memory for which routes, `[[kafka-rpc-plumbing]]` for what a new Kafka route actually requires
+  on the owning service's side (topic pre-creation, global `RpcExceptionFilter` registration) —
+  a gateway-only diff adding a new `kafkaProducer.send()` call site without matching changes
+  there will compile but 404/hang at runtime. Most other existing controllers still have their
+  `sendRpc` calls commented out — that's expected WIP state, not a finding, unless the diff
+  itself introduces new dead code.
 - The message pattern string matches what the owning service actually exposes (can't verify
   the other repo directly, but flag any pattern that looks inconsistent with this repo's
   existing naming, e.g. wrong casing or a feature prefix that doesn't match the controller).
