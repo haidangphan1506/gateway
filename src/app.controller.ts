@@ -1,12 +1,18 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse as SwaggerResponse } from '@nestjs/swagger';
 import { AppService } from './app.service';
+import { Public } from '@packages/decorators';
+import { KafkaProducer } from './features/kafka/kafka.producer';
 // import { Public } from '@packages/decorators'; // commented out: only used by the removed RabbitMQ health route
 
 @ApiTags('Health')
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  private readonly logger = new Logger(AppController.name);
+  constructor(
+    private readonly appService: AppService,
+    private readonly kafkaProducer: KafkaProducer,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Health check', description: 'Returns a simple health check response' })
@@ -19,24 +25,19 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  // @Public() // commented out: RabbitMQ health check removed
-  // @Get('/rmq')
-  // @ApiOperation({
-  //   summary: 'Health check RABBITMQ',
-  //   description: 'Publishes a health-check message through RabbitMQ and confirms delivery',
-  // })
-  // @SwaggerResponse({
-  //   status: 200,
-  //   description: 'RabbitMQ publish succeeded',
-  //   schema: {
-  //     type: 'object',
-  //     properties: {
-  //       status: { type: 'string', example: 'ok' },
-  //       publishedAt: { type: 'string', example: '2024-01-01T00:00:00.000Z' },
-  //     },
-  //   },
-  // })
-  // async getRabbitMqRes() {
-  //   return await setTimeout(() => 123, 1000);
-  // }
+  @Public()
+  @Get('kafka')
+  @ApiOperation({
+    summary: 'Health check',
+    description: 'Returns a simple health check response from kafka ...',
+  })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Server is running',
+    schema: { type: 'string', example: 'Hello World!' },
+  })
+  async pingMsgFromKafkaController() {
+    this.logger.log('Send from kafka in gateway :', 123);
+    return await this.kafkaProducer.emit('kafka.ping', 123);
+  }
 }
