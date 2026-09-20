@@ -1,15 +1,11 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import { IS_PUBLIC_KEY } from '@packages/decorators';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { Request } from 'express';
-// import { Inject } from '@nestjs/common'; // commented out: RabbitMQ client removed
-// import { USER_SERVICE } from '../../features/rmq-clients/rmq-clients.constants'; // commented out
-
 import type { JwtUserRole } from '@packages/helpers';
+import { KafkaProducer } from '../../features/kafka/kafka.producer';
 
 /** Access-token payload shape (matches access JWTs from `signAccessToken`). */
 export type JwtGuardUser = {
@@ -53,16 +49,40 @@ function parseAccessPayload(decoded: unknown): JwtGuardUser {
   return { id: o.sub, email: o.email, typ: 'access', role: parseJwtUserRole(o.role) };
 }
 
+const SESSION_KEY_PREFIX = 'session:';
+const SESSION_CACHE_TTL_MS = 30_000; // 30 seconds
+
+interface CacheEntry {
+  valid: boolean;
+  expiresAt: number;
+}
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  private readonly logger = new Logger(JwtAuthGuard.name);
+  private readonly sessionCache = new Map<string, CacheEntry>();
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly reflector: Reflector,
-    // @Inject(USER_SERVICE) private readonly userClient: ClientProxy, // commented out: RabbitMQ client removed
+    private readonly kafkaProducer: KafkaProducer,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  private getCachedSession(userId: string): CacheEntry | undefined {
+    const entry = this.sessionCache.get(userId);
+    if (!entry || Date.now() > entry.expiresAt) {
+      this.sessionCache.delete(userId);
+      return undefined;
+    }
+    return entry;
+  }
+
+  private setCachedSession(userId: string, valid: boolean): void {
+    this.sessionCache.set(userId, { valid, expiresAt: Date.now() + SESSION_CACHE_TTL_MS });
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -95,17 +115,38 @@ export class JwtAuthGuard implements CanActivate {
     const payload = parseAccessPayload(decoded);
     request.user = payload;
 
-    // Confirm the user still exists (revoked/deleted accounts fail even with a valid JWT) via
-    // the `user` service over RabbitMQ — gateway has no database of its own to check locally.
-    // Commented out: RabbitMQ request disabled while migrating transports.
-    // const rows = await sendRpc<unknown[]>(this.userClient, 'user.getUserByField', {
-    //   field: 'id',
-    //   value: payload.id,
-    // });
-    //
-    // if (!Array.isArray(rows) || rows.length === 0) {
-    //   throw new UnauthorizedException('Unauthorized ...');
-    // }
+    // Verify the user has an active session in Redis via third-service over Kafka.
+    // A missing session means the user logged out or the session expired.
+    // Fail open: if Kafka/Redis is unreachable, let the request through (availability > security
+    // for infrastructure failures). Only block when Redis explicitly returns null (session deleted).
+    // In-memory cache avoids a Kafka round-trip on every request from the same user.
+    const cached = this.getCachedSession(payload.id);
+    if (cached) {
+      if (!cached.valid) {
+        throw new UnauthorizedException('Session expired or not found ...');
+      }
+      return true;
+    }
+
+    try {
+      const session = await this.kafkaProducer.send<string | null, { key: string }>(
+        'redis.get',
+        { key: `${SESSION_KEY_PREFIX}${payload.id}` },
+      );
+      if (!session) {
+        this.setCachedSession(payload.id, false);
+        throw new UnauthorizedException('Session expired or not found ...');
+      }
+      this.setCachedSession(payload.id, true);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // Infrastructure failure (Kafka down, third_service unreachable, etc.) — fail open
+      this.logger.warn(
+        `Redis session check failed for user ${payload.id}, failing open: ${error}`,
+      );
+    }
 
     return true;
   }

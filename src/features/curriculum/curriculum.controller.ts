@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -20,28 +19,25 @@ import {
   type GetCurriculumsQueryDto,
   type UpdateCurriculumDto,
 } from '@packages/entities/curriculum';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `curriculum`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Curriculum')
 @ApiBearerAuth('access-token')
 @Controller('curriculum')
 export class CurriculumController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Get('generate-code')
   @HttpCode(StatusCodes.CREATED)
   @ApiOperation({ summary: 'Generate curriculum code' })
   @SwaggerResponse({ status: 201, description: 'Curriculum code generated' })
   generateCode() {
-    // return sendRpc(this.tutorClient, 'curriculum.generateCode'); // commented out: RabbitMQ request disabled
-    throw new Error('curriculum.generateCode is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('curriculum.generateCode', {});
   }
 
   @Post()
@@ -67,11 +63,7 @@ export class CurriculumController {
     _dto: CreateCurriculumDto,
     @CurrentUser() _user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'curriculum.create', { // commented out: RabbitMQ request disabled
-    //   userId: user.id,
-    //   createCurriculum: dto,
-    // });
-    throw new Error('curriculum.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('curriculum.create', { userId: _user.id, ..._dto });
   }
 
   @Get()
@@ -86,8 +78,7 @@ export class CurriculumController {
     _query: GetCurriculumsQueryDto,
     @CurrentUser() _user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'curriculum.getAll', { userId: user.id, query }); // commented out: RabbitMQ request disabled
-    throw new Error('curriculum.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('curriculum.getAll', { userId: _user.id, ..._query });
   }
 
   @Get(':id')
@@ -96,8 +87,7 @@ export class CurriculumController {
   @ApiParam({ name: 'id', description: 'Curriculum ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Curriculum detail fetched' })
   getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'curriculum.getById', { userId: user.id, id }); // commented out: RabbitMQ request disabled
-    throw new Error('curriculum.getById is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('curriculum.getById', { userId: _user.id, id: _id });
   }
 
   @Put(':id')
@@ -122,12 +112,7 @@ export class CurriculumController {
     _dto: UpdateCurriculumDto,
     @CurrentUser() _user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'curriculum.update', { // commented out: RabbitMQ request disabled
-    //   userId: user?.id,
-    //   id,
-    //   data: dto,
-    // });
-    throw new Error('curriculum.update is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('curriculum.update', { userId: _user.id, id: _id, data: _dto });
   }
 
   @Delete(':id')
@@ -136,7 +121,6 @@ export class CurriculumController {
   @ApiParam({ name: 'id', description: 'Curriculum ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Curriculum deleted' })
   delete(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'curriculum.delete', { userId: user.id, id }); // commented out: RabbitMQ request disabled
-    throw new Error('curriculum.delete is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('curriculum.delete', { userId: _user.id, id: _id });
   }
 }

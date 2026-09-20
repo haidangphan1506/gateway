@@ -1,5 +1,4 @@
 import { Body, Controller, Get, HttpCode, Param, Put } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -14,20 +13,18 @@ import {
   upsertAttendanceSchema,
   type UpsertAttendanceDto,
 } from '@packages/entities/attendance';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `attendance`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Attendance')
 @ApiBearerAuth('access-token')
 @Controller('attendances')
 export class AttendanceController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Get('session/:sessionId')
   @HttpCode(StatusCodes.OK)
@@ -37,9 +34,8 @@ export class AttendanceController {
   })
   @ApiParam({ name: 'sessionId', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Attendance fetched' })
-  getBySession(@Param('sessionId') _sessionId: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'attendance.getBySession', { userId: user?.id, sessionId }); // commented out: RabbitMQ request disabled
-    throw new Error('attendance.getBySession is disabled — RabbitMQ request commented out');
+  getBySession(@Param('sessionId') sessionId: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('attendance.getBySession', { userId: user.id, sessionId });
   }
 
   @Put()
@@ -51,10 +47,9 @@ export class AttendanceController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Attendance marked' })
   upsert(
     @Body(new ZodValidationPipe<UpsertAttendanceDto>(upsertAttendanceSchema))
-    _dto: UpsertAttendanceDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: UpsertAttendanceDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'attendance.upsert', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('attendance.upsert is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('attendance.upsert', { userId: user.id, ...dto });
   }
 }

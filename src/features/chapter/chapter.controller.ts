@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -19,19 +18,17 @@ import {
   type GetChaptersQueryDto,
   type UpdateChapterDto,
 } from '@packages/entities/curriculum';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `chapter`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Chapter')
 @ApiBearerAuth('access-token')
 @Controller('chapter')
 export class ChapterController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Post(':curriculumId')
   @HttpCode(StatusCodes.CREATED)
@@ -44,8 +41,7 @@ export class ChapterController {
     @Body(new ZodValidationPipe<CreateChapterDto>(createChapterSchema))
     _data: CreateChapterDto,
   ) {
-    // return sendRpc(this.tutorClient, 'chapter.create', { curriculumId, data }); // commented out: RabbitMQ request disabled
-    throw new Error('chapter.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('chapter.create', { curriculumId: _curriculumId, data: _data });
   }
 
   @Get()
@@ -59,8 +55,7 @@ export class ChapterController {
     @Query(new ZodValidationPipe<GetChaptersQueryDto>(getChaptersQuerySchema))
     _query: GetChaptersQueryDto,
   ) {
-    // return sendRpc(this.tutorClient, 'chapter.getAll', { query }); // commented out: RabbitMQ request disabled
-    throw new Error('chapter.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('chapter.getAll', { query: _query });
   }
 
   @Get(':id')
@@ -69,8 +64,7 @@ export class ChapterController {
   @ApiParam({ name: 'id', description: 'Chapter ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Chapter fetched' })
   getById(@Param('id') _id: string) {
-    // return sendRpc(this.tutorClient, 'chapter.getById', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('chapter.getById is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('chapter.getById', { id: _id });
   }
 
   @Put(':id')
@@ -83,8 +77,7 @@ export class ChapterController {
     @Body(new ZodValidationPipe<UpdateChapterDto>(updateChapterSchema))
     _data: UpdateChapterDto,
   ) {
-    // return sendRpc(this.tutorClient, 'chapter.update', { id, data }); // commented out: RabbitMQ request disabled
-    throw new Error('chapter.update is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('chapter.update', { id: _id, data: _data });
   }
 
   @Delete(':id')
@@ -93,7 +86,6 @@ export class ChapterController {
   @ApiParam({ name: 'id', description: 'Chapter ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Chapter deleted' })
   delete(@Param('id') _id: string) {
-    // return sendRpc(this.tutorClient, 'chapter.delete', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('chapter.delete is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('chapter.delete', { id: _id });
   }
 }

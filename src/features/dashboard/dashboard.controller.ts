@@ -1,5 +1,4 @@
 import { Controller, Get, HttpCode } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -8,20 +7,18 @@ import {
 } from '@nestjs/swagger';
 import { StatusCodes } from 'http-status-codes';
 import { CurrentUser } from '@packages/decorators';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `dashboard`: guards/Swagger stay, every handler forwards to
- * the `tutor-service` over RabbitMQ via `sendRpc`.
+ * the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Dashboard')
 @ApiBearerAuth('access-token')
 @Controller('dashboard')
 export class DashboardController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Get('overview')
   @HttpCode(StatusCodes.OK)
@@ -30,8 +27,7 @@ export class DashboardController {
     description: 'Role-aware aggregate: stats, today schedule, monthly revenue/sessions and recent notifications',
   })
   @SwaggerResponse({ status: 200, description: 'Dashboard overview fetched' })
-  overview(@CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'dashboard.overview', { userId: user.id }); // commented out: RabbitMQ request disabled
-    throw new Error('dashboard.overview is disabled — RabbitMQ request commented out');
+  overview(@CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('dashboard.overview', { userId: user.id });
   }
 }

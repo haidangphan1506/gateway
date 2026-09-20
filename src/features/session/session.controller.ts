@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -22,20 +21,18 @@ import {
   type GetSessionsQueryDto,
   type UpdateSessionDto,
 } from '@packages/entities/session';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `sessions`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Sessions')
 @ApiBearerAuth('access-token')
 @Controller('sessions')
 export class SessionController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -44,11 +41,10 @@ export class SessionController {
   @SwaggerResponse({ status: 201, description: 'Session created' })
   create(
     @Body(new ZodValidationPipe<CreateSessionDto>(createSessionSchema))
-    _dto: CreateSessionDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: CreateSessionDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'session.create', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('session.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('session.create', { userId: user.id, ...dto });
   }
 
   @Post('bulk')
@@ -57,11 +53,10 @@ export class SessionController {
   @SwaggerResponse({ status: 201, description: 'Sessions created' })
   createBulk(
     @Body(new ZodValidationPipe<CreateSessionsDto>(createSessionsSchema))
-    _dto: CreateSessionsDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: CreateSessionsDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'session.createBulk', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('session.createBulk is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('session.createBulk', { userId: user.id, ...dto });
   }
 
   @Get()
@@ -82,11 +77,10 @@ export class SessionController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Sessions fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetSessionsQueryDto>(getSessionsSchema))
-    _query: GetSessionsQueryDto,
-    @CurrentUser() _user: JwtGuardUser,
+    query: GetSessionsQueryDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'session.getAll', { userId: user?.id, query }); // commented out: RabbitMQ request disabled
-    throw new Error('session.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('session.getAll', { userId: user.id, ...query });
   }
 
   @Get('class/:classId')
@@ -94,9 +88,8 @@ export class SessionController {
   @ApiOperation({ summary: 'Get sessions by class' })
   @ApiParam({ name: 'classId', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Sessions fetched' })
-  getByClass(@Param('classId') _classId: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'session.getByClass', { userId: user?.id, classId }); // commented out: RabbitMQ request disabled
-    throw new Error('session.getByClass is disabled — RabbitMQ request commented out');
+  getByClass(@Param('classId') classId: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('session.getByClass', { userId: user.id, classId });
   }
 
   @Get(':id')
@@ -104,9 +97,8 @@ export class SessionController {
   @ApiOperation({ summary: 'Get session detail' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Session detail fetched' })
-  getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'session.getById', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
-    throw new Error('session.getById is disabled — RabbitMQ request commented out');
+  getById(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('session.getById', { userId: user.id, id });
   }
 
   @Put(':id')
@@ -115,13 +107,12 @@ export class SessionController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Session updated' })
   update(
-    @Param('id') _id: string,
+    @Param('id') id: string,
     @Body(new ZodValidationPipe<UpdateSessionDto>(updateSessionSchema))
-    _dto: UpdateSessionDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: UpdateSessionDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'session.update', { userId: user?.id, id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('session.update is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('session.update', { userId: user.id, id, ...dto });
   }
 
   @Delete(':id')
@@ -129,8 +120,7 @@ export class SessionController {
   @ApiOperation({ summary: 'Delete session' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Session deleted' })
-  del(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'session.delete', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
-    throw new Error('session.delete is disabled — RabbitMQ request commented out');
+  del(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('session.delete', { userId: user.id, id });
   }
 }

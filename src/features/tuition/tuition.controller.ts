@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -20,20 +19,18 @@ import {
   type GetTuitionsQueryDto,
   type UpdateTuitionDto,
 } from '@packages/entities/tuition';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `tuitions`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Tuitions')
 @ApiBearerAuth('access-token')
 @Controller('tuitions')
 export class TuitionController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -42,11 +39,10 @@ export class TuitionController {
   @SwaggerResponse({ status: 201, description: 'Tuition record created' })
   create(
     @Body(new ZodValidationPipe<CreateTuitionDto>(createTuitionSchema))
-    _dto: CreateTuitionDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: CreateTuitionDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'tuition.create', { data: dto, userId: user.id }); // commented out: RabbitMQ request disabled
-    throw new Error('tuition.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('tuition.create', { userId: user.id, data: dto });
   }
 
   @Get('summary')
@@ -57,9 +53,8 @@ export class TuitionController {
   })
   @ApiQuery({ name: 'classId', required: false, type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Summary fetched' })
-  getSummary(@Query('classId') _classId?: string) {
-    // return sendRpc(this.tutorClient, 'tuition.getSummary', classId); // commented out: RabbitMQ request disabled
-    throw new Error('tuition.getSummary is disabled — RabbitMQ request commented out');
+  getSummary(@Query('classId') classId?: string) {
+    return this.kafkaProducer.send('tuition.getSummary', { classId });
   }
 
   @Get()
@@ -73,10 +68,9 @@ export class TuitionController {
   @SwaggerResponse({ status: 200, description: 'Tuitions fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetTuitionsQueryDto>(getTuitionsQuerySchema))
-    _query: GetTuitionsQueryDto,
+    query: GetTuitionsQueryDto,
   ) {
-    // return sendRpc(this.tutorClient, 'tuition.getAll', query); // commented out: RabbitMQ request disabled
-    throw new Error('tuition.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('tuition.getAll', { query });
   }
 
   @Get(':id')
@@ -84,9 +78,8 @@ export class TuitionController {
   @ApiOperation({ summary: 'Get tuition detail' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Tuition detail' })
-  getById(@Param('id') _id: string) {
-    // return sendRpc(this.tutorClient, 'tuition.getById', id); // commented out: RabbitMQ request disabled
-    throw new Error('tuition.getById is disabled — RabbitMQ request commented out');
+  getById(@Param('id') id: string) {
+    return this.kafkaProducer.send('tuition.getById', { id });
   }
 
   @Put(':id')
@@ -95,13 +88,12 @@ export class TuitionController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Tuition updated' })
   update(
-    @Param('id') _id: string,
+    @Param('id') id: string,
     @Body(new ZodValidationPipe(updateTuitionSchema))
-    _dto: UpdateTuitionDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: UpdateTuitionDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'tuition.update', { id, data: dto, userId: user.id }); // commented out: RabbitMQ request disabled
-    throw new Error('tuition.update is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('tuition.update', { userId: user.id, id, data: dto });
   }
 
   @Delete(':id')
@@ -109,8 +101,7 @@ export class TuitionController {
   @ApiOperation({ summary: 'Delete tuition record' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Tuition deleted' })
-  delete(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'tuition.delete', { id, userId: user.id }); // commented out: RabbitMQ request disabled
-    throw new Error('tuition.delete is disabled — RabbitMQ request commented out');
+  delete(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('tuition.delete', { userId: user.id, id });
   }
 }

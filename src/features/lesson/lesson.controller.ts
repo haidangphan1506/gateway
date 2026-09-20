@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -19,19 +18,17 @@ import {
   type GetLessonsQueryDto,
   type UpdateLessonDto,
 } from '@packages/entities/curriculum';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `lesson`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Lesson')
 @ApiBearerAuth('access-token')
 @Controller('curriculum/lessons')
 export class LessonController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -46,8 +43,7 @@ export class LessonController {
     @Body(new ZodValidationPipe<CreateLessonBodyDto>(createLessonBodySchema))
     _data: CreateLessonBodyDto,
   ) {
-    // return sendRpc(this.tutorClient, 'lesson.create', { curriculumId, chapterId, data }); // commented out: RabbitMQ request disabled
-    throw new Error('lesson.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('lesson.create', { curriculumId: _curriculumId, chapterId: _chapterId, data: _data });
   }
 
   @Get()
@@ -61,8 +57,7 @@ export class LessonController {
     @Query(new ZodValidationPipe<GetLessonsQueryDto>(getLessonsQuerySchema))
     _query: GetLessonsQueryDto,
   ) {
-    // return sendRpc(this.tutorClient, 'lesson.getAll', { query }); // commented out: RabbitMQ request disabled
-    throw new Error('lesson.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('lesson.getAll', { query: _query });
   }
 
   @Get(':id')
@@ -71,8 +66,7 @@ export class LessonController {
   @ApiParam({ name: 'id', description: 'Lesson ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Lesson fetched' })
   getById(@Param('id') _id: string) {
-    // return sendRpc(this.tutorClient, 'lesson.getById', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('lesson.getById is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('lesson.getById', { id: _id });
   }
 
   @Put(':id')
@@ -85,8 +79,7 @@ export class LessonController {
     @Body(new ZodValidationPipe<UpdateLessonDto>(updateLessonSchema))
     _data: UpdateLessonDto,
   ) {
-    // return sendRpc(this.tutorClient, 'lesson.update', { id, data }); // commented out: RabbitMQ request disabled
-    throw new Error('lesson.update is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('lesson.update', { id: _id, data: _data });
   }
 
   @Delete(':id')
@@ -95,7 +88,6 @@ export class LessonController {
   @ApiParam({ name: 'id', description: 'Lesson ID', type: 'string' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Lesson deleted' })
   delete(@Param('id') _id: string) {
-    // return sendRpc(this.tutorClient, 'lesson.delete', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('lesson.delete is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('lesson.delete', { id: _id });
   }
 }
