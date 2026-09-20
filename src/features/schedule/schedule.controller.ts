@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -22,20 +21,18 @@ import {
   type GetSchedulesQueryDto,
   type UpdateScheduleDto,
 } from '@packages/entities/schedule';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `schedules`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Schedules')
 @ApiBearerAuth('access-token')
 @Controller('schedules')
 export class ScheduleController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -44,11 +41,10 @@ export class ScheduleController {
   @SwaggerResponse({ status: 201, description: 'Schedule created' })
   create(
     @Body(new ZodValidationPipe<CreateScheduleDto>(createScheduleSchema))
-    _dto: CreateScheduleDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: CreateScheduleDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'schedule.create', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('schedule.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('schedule.create', { userId: user.id, ...dto });
   }
 
   @Post('bulk')
@@ -57,11 +53,10 @@ export class ScheduleController {
   @SwaggerResponse({ status: 201, description: 'Schedules created' })
   createBulk(
     @Body(new ZodValidationPipe<CreateSchedulesDto>(createSchedulesSchema))
-    _dto: CreateSchedulesDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: CreateSchedulesDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'schedule.createBulk', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('schedule.createBulk is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('schedule.createBulk', { userId: user.id, ...dto });
   }
 
   @Get()
@@ -77,11 +72,10 @@ export class ScheduleController {
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedules fetched' })
   getAll(
     @Query(new ZodValidationPipe<GetSchedulesQueryDto>(getSchedulesSchema))
-    _query: GetSchedulesQueryDto,
-    @CurrentUser() _user: JwtGuardUser,
+    query: GetSchedulesQueryDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'schedule.getAll', { userId: user?.id, query }); // commented out: RabbitMQ request disabled
-    throw new Error('schedule.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('schedule.getAll', { userId: user.id, ...query });
   }
 
   @Get('class/:classId')
@@ -89,9 +83,8 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Get schedules by class' })
   @ApiParam({ name: 'classId', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedules fetched' })
-  getByClass(@Param('classId') _classId: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'schedule.getByClass', { userId: user?.id, classId }); // commented out: RabbitMQ request disabled
-    throw new Error('schedule.getByClass is disabled — RabbitMQ request commented out');
+  getByClass(@Param('classId') classId: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('schedule.getByClass', { userId: user.id, classId });
   }
 
   @Get(':id')
@@ -99,9 +92,8 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Get schedule detail' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedule fetched' })
-  getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'schedule.getById', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
-    throw new Error('schedule.getById is disabled — RabbitMQ request commented out');
+  getById(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('schedule.getById', { userId: user.id, id });
   }
 
   @Patch(':id')
@@ -110,13 +102,12 @@ export class ScheduleController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedule updated' })
   update(
-    @Param('id') _id: string,
+    @Param('id') id: string,
     @Body(new ZodValidationPipe<UpdateScheduleDto>(updateScheduleSchema))
-    _dto: UpdateScheduleDto,
-    @CurrentUser() _user: JwtGuardUser,
+    dto: UpdateScheduleDto,
+    @CurrentUser() user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'schedule.update', { userId: user?.id, id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('schedule.update is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('schedule.update', { userId: user.id, id, ...dto });
   }
 
   @Delete(':id')
@@ -124,8 +115,7 @@ export class ScheduleController {
   @ApiOperation({ summary: 'Delete schedule' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Schedule deleted' })
-  del(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'schedule.delete', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
-    throw new Error('schedule.delete is disabled — RabbitMQ request commented out');
+  del(@Param('id') id: string, @CurrentUser() user: JwtGuardUser) {
+    return this.kafkaProducer.send('schedule.delete', { userId: user.id, id });
   }
 }

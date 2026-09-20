@@ -9,7 +9,6 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -35,22 +34,20 @@ import {
   updateUserSchema,
   type UserDataFieldDto,
 } from '@packages/entities/user';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
 import { USER_SWAGGER_MESSAGES } from 'src/data/swaggers/messages';
 import { USER_SWAGGERS_DATA } from 'src/data/swaggers/data/user.swagger';
-// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge here: validation/guards/Swagger stay, every handler forwards to
- * the `user` service over RabbitMQ via `sendRpc` — no local business logic or DB access.
+ * the `user` service over Kafka via `KafkaProducer.send()` — no local business logic or DB access.
  */
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
 @Controller('users')
 export class UserController {
-  // constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Get()
   @HttpCode(StatusCodes.OK)
@@ -72,8 +69,7 @@ export class UserController {
     @Query(new ZodValidationPipe<GetUsersQueryDto>(getUsersQuerySchema))
     _query: GetUsersQueryDto,
   ) {
-    // return sendRpc(this.userClient, 'user.getUsers', query); // commented out: RabbitMQ request disabled
-    throw new Error('user.getUsers is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUsers', _query);
   }
 
   @Get('/detail-user')
@@ -87,8 +83,7 @@ export class UserController {
     description: USER_SWAGGER_MESSAGES.GET_USER_SUCCESSFULLY,
   })
   getDetailUserController(@CurrentUser() _user: Record<string, string>) {
-    // return sendRpc(this.userClient, 'user.getDetailUser', { userId: user.id }); // commented out: RabbitMQ request disabled
-    throw new Error('user.getDetailUser is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getDetailUser', { userId: _user.id });
   }
 
   @Get('/get-by-field')
@@ -107,8 +102,7 @@ export class UserController {
     @Query(new ZodValidationPipe(dataFieldSchema))
     _dataFieldDto: UserDataFieldDto,
   ): Promise<unknown> {
-    // return sendRpc(this.userClient, 'user.getUserByField', dataFieldDto); // commented out: RabbitMQ request disabled
-    throw new Error('user.getUserByField is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUserByField', _dataFieldDto);
   }
 
   @Post()
@@ -126,8 +120,7 @@ export class UserController {
     @Body(new ZodValidationPipe(createUserSchema))
     _createUserDto: CreateUserDto,
   ): Promise<CreateUserResponseDto> {
-    // return sendRpc(this.userClient, 'user.createUser', createUserDto); // commented out: RabbitMQ request disabled
-    throw new Error('user.createUser is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.createUser', _createUserDto);
   }
 
   @Put('')
@@ -146,12 +139,7 @@ export class UserController {
     @Body(new ZodValidationPipe<UpdateUserDto>(updateUserSchema))
     _updateUserDto: UpdateUserDto,
   ) {
-    // return sendRpc(this.userClient, 'user.updateUser', { // commented out: RabbitMQ request disabled
-    //   id: user.id,
-    //   role: user.role,
-    //   data: updateUserDto,
-    // });
-    throw new Error('user.updateUser is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.updateUser', { userId: _user.id, ..._updateUserDto });
   }
 
   @Put('/:id')
@@ -171,8 +159,7 @@ export class UserController {
     @Body(new ZodValidationPipe<UpdateUserDto>(updateUserSchema))
     _updateUserDto: UpdateUserDto,
   ) {
-    // return sendRpc(this.userClient, 'user.updateUserByAdmin', { id, data: updateUserDto }); // commented out: RabbitMQ request disabled
-    throw new Error('user.updateUserByAdmin is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.updateUserByAdmin', { id: _id, ..._updateUserDto });
   }
 
   @Put('/:id/status')
@@ -187,8 +174,7 @@ export class UserController {
     description: USER_SWAGGER_MESSAGES.UPDATE_USER_STATUS_SUCCESSFULLY,
   })
   updateStatusUserController(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'user.updateStatusUser', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('user.updateStatusUser is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.updateStatusUser', { id: _id });
   }
 
   @Delete('/:id')
@@ -203,8 +189,7 @@ export class UserController {
     description: USER_SWAGGER_MESSAGES.DELETE_USER_SUCCESSFULLY,
   })
   deleteUserByAdminController(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'user.deleteUserByAdmin', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('user.deleteUserByAdmin is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.deleteUserByAdmin', { id: _id });
   }
 
   @Post('change-password')
@@ -223,10 +208,6 @@ export class UserController {
     @Body(new ZodValidationPipe(changePasswordSchema))
     _changePasswordDto: ChangePasswordValues,
   ) {
-    // return sendRpc(this.userClient, 'user.changePassword', { // commented out: RabbitMQ request disabled
-    //   userId: user.id,
-    //   data: changePasswordDto,
-    // });
-    throw new Error('user.changePassword is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.changePassword', { userId: _user.id, ..._changePasswordDto });
   }
 }

@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -20,20 +19,18 @@ import {
   updateStudentSchema,
   type UpdateStudentDto,
 } from '@packages/entities/student';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge here: validation/guards/Swagger stay, every handler forwards to
- * the `user` service over RabbitMQ via `sendRpc` — no local business logic or DB access.
+ * the `user` service over Kafka via `KafkaProducer.send()` — no local business logic or DB access.
  */
 @ApiTags('Students')
 @ApiBearerAuth('access-token')
 @Controller('students')
 export class StudentController {
-  // constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Get('get-student-code')
   @HttpCode(StatusCodes.OK)
@@ -43,8 +40,7 @@ export class StudentController {
   })
   @SwaggerResponse({ status: 201, description: 'Student created' })
   generateStudentCodeController() {
-    // return sendRpc(this.userClient, 'student.getStudentCode', {}); // commented out: RabbitMQ request disabled
-    throw new Error('student.getStudentCode is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUserByField', {});
   }
 
   @Post()
@@ -112,8 +108,7 @@ export class StudentController {
     _dto: CreateStudentDto,
     @CurrentUser() _currentUser: JwtGuardUser,
   ) {
-    // return sendRpc(this.userClient, 'student.create', { data: dto, currentUser }); // commented out: RabbitMQ request disabled
-    throw new Error('student.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.createUser', { userId: _currentUser.id, ..._dto });
   }
 
   @Get()
@@ -146,8 +141,7 @@ export class StudentController {
     @Query(new ZodValidationPipe<GetStudentsQueryDto>(getStudentsQuerySchema))
     _query: GetStudentsQueryDto,
   ) {
-    // return sendRpc(this.userClient, 'student.getAll', query); // commented out: RabbitMQ request disabled
-    throw new Error('student.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUsers', _query);
   }
 
   @Get(':id')
@@ -216,8 +210,7 @@ export class StudentController {
   })
   @SwaggerResponse({ status: 404, description: 'Student not found' })
   findById(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'student.findById', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('student.findById is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUserByField', { id: _id });
   }
 
   @Put(':id')
@@ -261,8 +254,7 @@ export class StudentController {
     @Body(new ZodValidationPipe(updateStudentSchema))
     _dto: UpdateStudentDto,
   ) {
-    // return sendRpc(this.userClient, 'student.update', { id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('student.update is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.updateUser', { userId: _id, ..._dto });
   }
 
   @Delete(':id')
@@ -271,7 +263,6 @@ export class StudentController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Student deleted' })
   delete(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'student.delete', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('student.delete is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.deleteUserByAdmin', { id: _id });
   }
 }

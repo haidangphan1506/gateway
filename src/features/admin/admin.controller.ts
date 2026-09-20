@@ -10,7 +10,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -34,8 +33,7 @@ import {
   type UpdateManagedStudentDto,
   type ListManagedUsersQueryDto,
 } from '@packages/entities/admin';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
-// import { USER_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 const CREATE_ACCOUNT_BODY_SCHEMA = {
   type: 'object',
@@ -104,7 +102,7 @@ const UPDATE_STUDENT_BODY_SCHEMA = {
  * Every route is protected by the global `JwtAuthGuard` (authentication) plus a
  * controller-level `RolesGuard` + `@Roles('ADMIN')` (authorization) — only users
  * whose JWT carries `role: ADMIN` may reach any handler here. Gateway forwards every
- * request to the `user` service over RabbitMQ; no local business logic or DB access.
+ * request to the `user` service over Kafka; no local business logic or DB access.
  */
 @ApiTags('Admin')
 @ApiBearerAuth('access-token')
@@ -112,8 +110,7 @@ const UPDATE_STUDENT_BODY_SCHEMA = {
 @Roles('ADMIN')
 @Controller('admin')
 export class AdminController {
-  // constructor(@Inject(USER_SERVICE) private readonly userClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   // ─── Tutors ────────────────────────────────────────────────────────
   @Post('tutors')
@@ -122,8 +119,7 @@ export class AdminController {
   @ApiBody({ schema: CREATE_ACCOUNT_BODY_SCHEMA })
   @SwaggerResponse({ status: 201, description: 'Tutor created' })
   createTutor(@Body(new ZodValidationPipe(createManagedUserSchema)) _dto: CreateManagedUserDto) {
-    // return sendRpc(this.userClient, 'admin.createTutor', dto); // commented out: RabbitMQ request disabled
-    throw new Error('admin.createTutor is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.createUser', _dto);
   }
 
   @Get('tutors')
@@ -143,8 +139,7 @@ export class AdminController {
     @Query(new ZodValidationPipe<ListManagedUsersQueryDto>(listManagedUsersQuerySchema))
     _query: ListManagedUsersQueryDto,
   ) {
-    // return sendRpc(this.userClient, 'admin.listTutors', query); // commented out: RabbitMQ request disabled
-    throw new Error('admin.listTutors is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUsers', _query);
   }
 
   @Get('tutors/:id')
@@ -154,8 +149,7 @@ export class AdminController {
   @SwaggerResponse({ status: 200, description: 'Tutor detail' })
   @SwaggerResponse({ status: 404, description: 'Tutor not found' })
   getTutor(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'admin.getTutor', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('admin.getTutor is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUserByField', { id: _id });
   }
 
   @Put('tutors/:id')
@@ -168,8 +162,7 @@ export class AdminController {
     @Param('id') _id: string,
     @Body(new ZodValidationPipe(updateManagedUserSchema)) _dto: UpdateManagedUserDto,
   ) {
-    // return sendRpc(this.userClient, 'admin.updateTutor', { id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('admin.updateTutor is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.updateUserByAdmin', { id: _id, ..._dto });
   }
 
   @Delete('tutors/:id')
@@ -178,8 +171,7 @@ export class AdminController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Tutor deleted' })
   deleteTutor(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'admin.deleteTutor', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('admin.deleteTutor is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.deleteUserByAdmin', { id: _id });
   }
 
   // ─── Students ──────────────────────────────────────────────────────
@@ -192,8 +184,7 @@ export class AdminController {
   @ApiBody({ schema: CREATE_ACCOUNT_BODY_SCHEMA })
   @SwaggerResponse({ status: 201, description: 'Student created' })
   createStudent(@Body(new ZodValidationPipe(createManagedUserSchema)) _dto: CreateManagedUserDto) {
-    // return sendRpc(this.userClient, 'admin.createStudent', dto); // commented out: RabbitMQ request disabled
-    throw new Error('admin.createStudent is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.createUser', _dto);
   }
 
   @Get('students')
@@ -216,8 +207,7 @@ export class AdminController {
     @Query(new ZodValidationPipe<ListManagedUsersQueryDto>(listManagedUsersQuerySchema))
     _query: ListManagedUsersQueryDto,
   ) {
-    // return sendRpc(this.userClient, 'admin.listStudents', query); // commented out: RabbitMQ request disabled
-    throw new Error('admin.listStudents is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUsers', _query);
   }
 
   @Get('students/:id')
@@ -227,8 +217,7 @@ export class AdminController {
   @SwaggerResponse({ status: 200, description: 'Student detail' })
   @SwaggerResponse({ status: 404, description: 'Student not found' })
   getStudent(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'admin.getStudent', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('admin.getStudent is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.getUserByField', { id: _id });
   }
 
   @Put('students/:id')
@@ -244,8 +233,7 @@ export class AdminController {
     @Param('id') _id: string,
     @Body(new ZodValidationPipe(updateManagedStudentSchema)) _dto: UpdateManagedStudentDto,
   ) {
-    // return sendRpc(this.userClient, 'admin.updateStudent', { id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('admin.updateStudent is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.updateUserByAdmin', { id: _id, ..._dto });
   }
 
   @Delete('students/:id')
@@ -254,7 +242,6 @@ export class AdminController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: 200, description: 'Student deleted' })
   deleteStudent(@Param('id') _id: string) {
-    // return sendRpc(this.userClient, 'admin.deleteStudent', { id }); // commented out: RabbitMQ request disabled
-    throw new Error('admin.deleteStudent is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('user.deleteUserByAdmin', { id: _id });
   }
 }

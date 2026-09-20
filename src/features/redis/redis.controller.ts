@@ -1,5 +1,4 @@
 import { Controller, Get, HttpCode, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -10,19 +9,17 @@ import {
 import { StatusCodes } from 'http-status-codes';
 import { ZodValidationPipe } from '@packages/pipes';
 import { getRedisQuerySchema, type GetRedisQueryDto } from '@packages/entities/redis';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
-// import { THIRD_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `redis`: validation/guards/Swagger stay, the handler forwards
- * to the `third-service` over RabbitMQ via `sendRpc`.
+ * to the `third-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Redis')
 @ApiBearerAuth('access-token')
 @Controller('redis')
 export class RedisController {
-  // constructor(@Inject(THIRD_SERVICE) private readonly thirdClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Get()
   @HttpCode(StatusCodes.OK)
@@ -30,9 +27,8 @@ export class RedisController {
   @ApiQuery({ name: 'key', required: true, type: String, description: 'Redis key' })
   @SwaggerResponse({ status: 200, description: 'Value retrieved (null if key does not exist)' })
   get(
-    @Query(new ZodValidationPipe<GetRedisQueryDto>(getRedisQuerySchema)) _query: GetRedisQueryDto,
+    @Query(new ZodValidationPipe<GetRedisQueryDto>(getRedisQuerySchema)) query: GetRedisQueryDto,
   ) {
-    // return sendRpc(this.thirdClient, 'redis.get', query); // commented out: RabbitMQ request disabled
-    throw new Error('redis.get is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('redis.get', { key: query.key });
   }
 }

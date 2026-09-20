@@ -1,5 +1,4 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-// import { ClientProxy } from '@nestjs/microservices'; // commented out: RabbitMQ client removed
 import {
   ApiTags,
   ApiOperation,
@@ -21,20 +20,18 @@ import {
   type GradeExerciseDto,
   type SubmitExerciseDto,
 } from '@packages/entities/exercise';
-// import { sendRpc } from '@packages/helpers'; // commented out: RabbitMQ request helper removed
 import type { JwtGuardUser } from '@packages/guards/jwt-auth.guard';
-// import { TUTOR_SERVICE } from '../rmq-clients/rmq-clients.constants'; // commented out: RabbitMQ client removed
+import { KafkaProducer } from '../kafka/kafka.producer';
 
 /**
  * Gateway is a thin HTTP edge for `exercises`: validation/guards/Swagger stay, every handler
- * forwards to the `tutor-service` over RabbitMQ via `sendRpc`.
+ * forwards to the `tutor-service` over Kafka via `KafkaProducer.send()`.
  */
 @ApiTags('Exercises')
 @ApiBearerAuth('access-token')
 @Controller('exercises')
 export class ExerciseController {
-  // constructor(@Inject(TUTOR_SERVICE) private readonly tutorClient: ClientProxy) {}
-  constructor() {}
+  constructor(private readonly kafkaProducer: KafkaProducer) {}
 
   @Post()
   @HttpCode(StatusCodes.CREATED)
@@ -45,8 +42,7 @@ export class ExerciseController {
     _dto: CreateExerciseDto,
     @CurrentUser() _user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'exercise.create', { userId: user?.id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('exercise.create is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('exercise.create', { userId: _user.id, ..._dto });
   }
 
   @Get()
@@ -67,8 +63,7 @@ export class ExerciseController {
     _query: getExerciseDto,
     @CurrentUser() _user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'exercise.getAll', { userId: user?.id, query }); // commented out: RabbitMQ request disabled
-    throw new Error('exercise.getAll is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('exercise.getAll', { userId: _user.id, ..._query });
   }
 
   @Get(':id')
@@ -77,8 +72,7 @@ export class ExerciseController {
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @SwaggerResponse({ status: StatusCodes.OK, description: 'Exercise fetched' })
   getById(@Param('id') _id: string, @CurrentUser() _user: JwtGuardUser) {
-    // return sendRpc(this.tutorClient, 'exercise.getById', { userId: user?.id, id }); // commented out: RabbitMQ request disabled
-    throw new Error('exercise.getById is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('exercise.getById', { userId: _user.id, id: _id });
   }
 
   @Patch(':id/submit')
@@ -92,8 +86,7 @@ export class ExerciseController {
     _dto: SubmitExerciseDto,
     @CurrentUser() _user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'exercise.submit', { userId: user?.id, id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('exercise.submit is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('exercise.submit', { userId: _user.id, id: _id, data: _dto });
   }
 
   @Patch(':id/grade')
@@ -107,7 +100,6 @@ export class ExerciseController {
     _dto: GradeExerciseDto,
     @CurrentUser() _user: JwtGuardUser,
   ) {
-    // return sendRpc(this.tutorClient, 'exercise.grade', { userId: user?.id, id, data: dto }); // commented out: RabbitMQ request disabled
-    throw new Error('exercise.grade is disabled — RabbitMQ request commented out');
+    return this.kafkaProducer.send('exercise.grade', { userId: _user.id, id: _id, data: _dto });
   }
 }
