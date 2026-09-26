@@ -13,6 +13,7 @@ export const KAFKA_REQUEST_TOPICS: string[] = [
   'kafka.user',
   'kafka.user.error',
   'kafka.test2',
+  'kafka.send',
   // ── Auth (user service) ──
   'auth.register',
   'auth.login',
@@ -120,6 +121,9 @@ export const KAFKA_REQUEST_TOPICS: string[] = [
   'ai.chat',
   'ai.history',
   'ai.clearHistory',
+  // ── Health checks ──
+  'health.postgres',
+  'health.redis',
 ];
 
 /** Topics `KafkaProducer.emit()` fires at, fire-and-forget — no `.reply` subscription needed. */

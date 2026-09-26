@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { KAFKA_PRODUCER, KAFKA_REQUEST_TOPICS } from './kafka.constants';
 import { ClientKafka } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { randomUUID } from 'node:crypto';
 import {
   CORRELATION_ID_HEADER,
@@ -106,34 +106,108 @@ export class KafkaProducer implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Request-reply. Rethrows whatever the responder's `RpcExceptionFilter` produced as a proper
+   * Request-reply with retry logic and exponential backoff.
+   * Rethrows whatever the responder's `RpcExceptionFilter` produced as a proper
    * `HttpException` (status + message), so callers see the same error shape a local call would
    * throw instead of a generic rejection — the Kafka equivalent of the old RMQ `sendRpc` helper.
+   * @param topic The Kafka topic to send to
+   * @param message The message payload
+   * @param timeoutMs Optional timeout per attempt in milliseconds (default: 10000ms)
+   * @param maxRetries Maximum number of retries (default: 2, total 3 attempts)
    */
-  async send<TResponse, TRequest>(topic: string, message: TRequest): Promise<TResponse> {
+  async send<TResponse, TRequest>(
+    topic: string,
+    message: TRequest,
+    timeoutMs?: number,
+    maxRetries: number = 2,
+  ): Promise<TResponse> {
     const envelope = wrapWithTraceHeaders(message);
     const correlationId = envelope.headers[CORRELATION_ID_HEADER];
     const traceId = envelope.headers[TRACE_ID_HEADER];
-    this.logger.log(`[SEND] ${topic} correlationId=${correlationId} traceId=${traceId}`);
-    try {
-      return await firstValueFrom(
-        this.client.send<TResponse, KafkaMessageEnvelope<TRequest>>(topic, envelope),
+    const totalStartTime = Date.now();
+    const finalTimeoutMs = timeoutMs ?? 10000;
+
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      const attemptStartTime = Date.now();
+
+      this.logger.log(
+        `[SEND-START] ${topic} attempt=${attempt}/${maxRetries + 1} correlationId=${correlationId} traceId=${traceId} timeoutMs=${finalTimeoutMs}`,
       );
-    } catch (error: unknown) {
-      const payload = toRpcErrorPayload(error);
-      this.logger.error(
-        `[SEND FAILED] ${topic} correlationId=${correlationId} traceId=${traceId} - ${
-          Array.isArray(payload.message) ? payload.message.join(', ') : payload.message
-        }`,
-      );
-      throw new HttpException(
-        {
-          message: payload.message ?? 'Internal server error',
-          errors: payload.errors,
-          serviceName: payload.serviceName,
-        },
-        payload.statusCode ?? HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+
+      try {
+        let observable = this.client.send<TResponse, KafkaMessageEnvelope<TRequest>>(
+          topic,
+          envelope,
+        );
+
+        observable = observable.pipe(
+          timeout({
+            each: finalTimeoutMs,
+            meta: `Kafka ${topic} request timeout after ${finalTimeoutMs}ms`,
+          }),
+        );
+
+        const response = await firstValueFrom(observable);
+        const totalDuration = Date.now() - totalStartTime;
+
+        this.logger.log(
+          `[SEND-SUCCESS] ${topic} correlationId=${correlationId} traceId=${traceId} attempt=${attempt} totalDuration=${totalDuration}ms`,
+        );
+
+        return response;
+      } catch (error: unknown) {
+        lastError = error;
+        const attemptDuration = Date.now() - attemptStartTime;
+        const totalDuration = Date.now() - totalStartTime;
+        const isTimeout = error instanceof Error && error.message?.includes('Timeout');
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+
+        this.logger.warn(
+          `[SEND-ATTEMPT-FAILED] ${topic} correlationId=${correlationId} traceId=${traceId} attempt=${attempt} attemptDuration=${attemptDuration}ms totalDuration=${totalDuration}ms isTimeout=${isTimeout} error=${errorMessage}`,
+        );
+
+        // If this was the last attempt, throw the error
+        if (attempt === maxRetries + 1) {
+          const payload = toRpcErrorPayload(error);
+          const finalDuration = Date.now() - totalStartTime;
+
+          this.logger.error(
+            `[SEND-FAILED] ${topic} correlationId=${correlationId} traceId=${traceId} attempts=${maxRetries + 1} totalDuration=${finalDuration}ms error=${
+              Array.isArray(payload.message) ? payload.message.join(', ') : payload.message
+            }`,
+          );
+
+          throw new HttpException(
+            {
+              message: payload.message ?? 'Kafka service unavailable',
+              errors: payload.errors,
+              serviceName: payload.serviceName,
+              isTimeout,
+              duration: finalDuration,
+              attempts: maxRetries + 1,
+            },
+            isTimeout ? HttpStatus.GATEWAY_TIMEOUT : payload.statusCode ?? HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
+
+        // Exponential backoff: 100ms * 2^(attempt-1)
+        const backoffMs = Math.min(100 * Math.pow(2, attempt - 1), 5000);
+
+        this.logger.log(
+          `[SEND-RETRY] ${topic} correlationId=${correlationId} traceId=${traceId} attempt=${attempt}/${maxRetries + 1} backoffMs=${backoffMs}`,
+        );
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
     }
+
+    // Should never reach here, but just in case
+    throw new HttpException(
+      'Kafka request failed unexpectedly',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
 }
