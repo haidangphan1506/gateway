@@ -7,7 +7,7 @@ gateway/
 ├── src/
 │   ├── main.ts                    # Bootstrap: CORS, interceptors, filters, listen (port 8888)
 │   ├── app.module.ts              # Root module (imports all feature modules)
-│   ├── app.controller.ts          # Health-check controller (+ RabbitMQ pub/sub demo route)
+│   ├── app.controller.ts          # Health-check controller (+ demo routes: kafka/emit, kafka/send with response, error handling)
 │   ├── app.service.ts             # Health-check service
 │   ├── features/                  # Every feature is a thin proxy controller (no service/repository,
 │   │   │                          # no DB) except auth's OAuth routes; each forwards via `sendRpc`
@@ -100,10 +100,11 @@ No `db:*` scripts exist here — gateway has nothing to migrate/seed.
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | Must match `user`'s secrets |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_CALLBACK_URL` / `GOOGLE_OAUTH_REDIRECT_URL` | Google OAuth (lives in gateway) |
 | `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` / `BACKEND_URL` | Facebook OAuth (lives in gateway) |
-| `RABBITMQ_URL` / `RABBITMQ_EXCHANGE` | RabbitMQ connection + pub/sub exchange |
-| `USER_QUEUE` / `TUTOR_QUEUE` / `THIRD_QUEUE` | Override each downstream RMQ client's queue name |
+| `KAFKA_BROKERS` | Kafka broker addresses (default: `kafka:9092` for internal) |
+| `KAFKA_SSL` | Enable TLS (default: `false` for internal; set `true` for public proxy) |
+| `KAFKA_SASL_*` | Optional SASL authentication (username, password, mechanism) |
 
-No `POSTGRES_*`/`DATABASE_URL`/`REDIS_*`/mail vars — gateway doesn't read them.
+No `POSTGRES_*`/`DATABASE_URL`/`REDIS_*`/mail vars — gateway doesn't read them. See `[[kafka-ssl-disabled-internal]]` for SSL/TLS configuration details.
 
 ## Code Conventions
 
@@ -117,6 +118,25 @@ No `POSTGRES_*`/`DATABASE_URL`/`REDIS_*`/mail vars — gateway doesn't read them
   the `test` npm script, which is Jest.
 - Mock the injected `ClientProxy` and assert on the `sendRpc` pattern/payload rather than
   mocking a repository (there isn't one).
+
+## Kafka Producer Patterns
+
+**Timeout support** (added 2026-09-26): `KafkaProducer.send()` accepts an optional `timeoutMs`
+parameter to fail fast if the responder doesn't reply within a deadline:
+```ts
+await this.kafkaProducer.send('<topic>', payload, 15000)  // 15-second timeout
+```
+Omit the parameter for operations with no deadline. Use this for long-running operations
+(e.g., report generation, data processing) to avoid indefinite hangs.
+
+**Error logging & debugging** (added 2026-09-26): All Kafka requests now include:
+- `requestId` — unique per-request identifier for correlating gateway ↔ user service logs
+- `duration` — total time from send to response/error in milliseconds
+- `isTimeout` — boolean flag indicating timeout vs. other errors
+- `originalError` — the actual root cause, not a generic message
+
+Controllers should wrap Kafka calls with try/catch and log with `requestId` for production
+debugging. See `ERROR_ANALYSIS.md` and `PRODUCTION_DEBUGGING.md` for diagnostic workflows.
 
 ## Available Skills
 
@@ -140,3 +160,7 @@ no DB) plus `../.claude/rules/architecture.md` and `shared-conventions.md` (cros
 
 **Do NOT read entire source code.** Only read files necessary for the task — see `CLAUDE.md`'s
 "IMPORTANT: Selective File Reading" section for the full breakdown.
+
+## Memory Index
+
+- [Kafka SSL Configuration](./memory/kafka-ssl-configuration.md) — SSL/TLS disabled for internal service-to-service communication (fixed 2026-09-26)

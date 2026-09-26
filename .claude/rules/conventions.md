@@ -53,3 +53,28 @@
   per message (with routing key/queue and, on failure, the error + stack) — this is built into
   the shared producer/consumer classes, so any feature that publishes or subscribes gets pass/fail
   visibility for free; don't add ad-hoc logging around individual `publish`/`subscribe` call sites.
+- **Kafka timeouts** (added 2026-09-26): `KafkaProducer.send()` accepts an optional `timeoutMs`
+  parameter (3rd argument) to set a per-call timeout via RxJS `timeout()` operator. Pass it for
+  operations that should fail fast if the responder doesn't reply within a deadline:
+  `await this.kafkaProducer.send('<topic>', payload, 15000)` for a 15-second timeout. Omit it
+  for operations with no deadline. Timeout errors appear as gateway 500 responses like any other
+  RPC failure.
+- **Kafka request tracking for debugging** (added 2026-09-26): Controller endpoints making Kafka
+  calls should track requests with a unique `requestId` and log start/success/failure for
+  production diagnostics:
+  ```ts
+  const requestId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  this.logger.log(`[SEND-START] requestId=${requestId} <pattern> -> <service>, payload=...`);
+  try {
+    const response = await this.kafkaProducer.send('<topic>', payload, timeoutMs);
+    this.logger.log(`[SEND-SUCCESS] requestId=${requestId} duration=${Date.now()-start}ms`);
+    return { statusCode: 200, message: 'Success', data: response, requestId, duration };
+  } catch (error) {
+    this.logger.error(`[SEND-FAILED] requestId=${requestId} error=${error.message}`);
+    throw error;
+  }
+  ```
+  The responder service should log `[RECEIVE-START]`/`[PROCESSING]`/`[RESPONSE-READY]` with the
+  same `requestId` for correlation. Use `requestId` to correlate gateway and responder service
+  logs when debugging production failures — see `ERROR_ANALYSIS.md` and `PRODUCTION_DEBUGGING.md`
+  for diagnostic workflows.
